@@ -4,7 +4,7 @@
   "description": "行为树可视化编辑器",
   "author": "Liao Zhai",
   "license": "MIT",
-  "main": "electron/main.js",
+  "main": "public/electron.js",
   "homepage": "./",
   "scripts": {
     "start": "set PORT=3001 && react-scripts start",
@@ -52,7 +52,7 @@
     },
     "files": [
       "build/**/*",
-      "electron/**/*",
+      "public/**/*",
       "node_modules/**/*"
     ],
     "directories": {
@@ -60,7 +60,7 @@
       "output": "dist"
     },
     "extraMetadata": {
-      "main": "electron/main.js"
+      "main": "public/electron.js"
     },
     "asar": true
   },

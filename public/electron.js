@@ -34,7 +34,7 @@ function createWindow() {
       webSecurity: false, // 禁用web安全策略，允许加载本地资源
       allowRunningInsecureContent: true // 允许运行不安全的内容
     },
-    icon: path.join(__dirname, '../public/favicon.ico'),
+    icon: path.join(__dirname, './favicon.ico'),
     show: false
   });
 
