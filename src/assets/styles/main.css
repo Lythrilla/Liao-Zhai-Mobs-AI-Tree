@@ -233,6 +233,32 @@ body {
   stroke-width: 3;
 }
 
+/* 修复连接线显示问题 */
+.react-flow__edge {
+  pointer-events: all;
+  z-index: 5 !important;
+}
+
+.react-flow__connection-path {
+  stroke: var(--color-primary);
+  stroke-width: 2;
+  fill: none;
+}
+
+.react-flow__connection {
+  z-index: 1000;
+}
+
+/* 确保连接点的z-index正确 */
+.react-flow__handle {
+  z-index: 10 !important;
+}
+
+/* 确保节点显示在连接线上方 */
+.react-flow__node {
+  z-index: 20 !important;
+}
+
 /* 工具按钮样式 */
 .tool-button {
   display: flex;

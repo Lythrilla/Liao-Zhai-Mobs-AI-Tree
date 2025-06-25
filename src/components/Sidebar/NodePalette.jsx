@@ -146,7 +146,7 @@ const NodePalette = ({ onDragStart, onDragEnd }) => {
         <small>共 {getTotalNodeCount()} 个节点</small>
         </div>
       
-      <style jsx>{`
+      <style jsx="true">{`
         .node-palette {
           display: flex;
           flex-direction: column;

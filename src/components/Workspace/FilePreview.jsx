@@ -1,447 +1,427 @@
 import React, { useState, useEffect } from 'react';
-import { formatFileSize, formatDate, validateBehaviorTree } from '../../utils/fileUtils';
 
-const FilePreview = ({ file, onOpenProject }) => {
-  const [fileContent, setFileContent] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [validationResult, setValidationResult] = useState(null);
-
-  // 当选中文件发生变化时，加载文件内容
+const FilePreview = ({ file, onOpenEditor }) => {
+  const [content, setContent] = useState('');
+  const [parsedJson, setParsedJson] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
   useEffect(() => {
+    if (!file) return;
+    
     const loadFileContent = async () => {
-      if (!file || file.isDirectory) {
-        setFileContent(null);
-        setValidationResult(null);
-        return;
-      }
-
+      setLoading(true);
+      setError(null);
+      setParsedJson(null);
+      
       try {
-        setIsLoading(true);
-        setError('');
-
-        if (window.electron) {
-          // 检查文件大小，避免加载过大文件
-          const maxPreviewSize = 1024 * 1024; // 1MB
-          if (file.size > maxPreviewSize) {
-            setError(`文件过大，无法预览（${formatFileSize(file.size)}）。最大预览大小为 ${formatFileSize(maxPreviewSize)}`);
-            setFileContent(null);
-            return;
-          }
-
-          // 读取文件内容
-          const result = await window.electron.ipcRenderer.invoke('read-file', file.path);
-          if (result.success) {
-            setFileContent(result.content);
-            
-            // 如果是JSON文件，验证是否为行为树格式
-            if (file.name.toLowerCase().endsWith('.json')) {
+        if (window.electron && window.electron.ipcRenderer) {
+          // 只预览JSON文件
+          if (file.name.endsWith('.json')) {
+            const result = await window.electron.ipcRenderer.invoke('read-file', file.path);
+            if (result.success) {
               try {
-                // 本地验证
-                const validation = validateBehaviorTree(result.content);
-                setValidationResult(validation);
-              } catch (validationError) {
-                console.error('验证JSON失败:', validationError);
-                setValidationResult({
-                  isValid: false,
-                  message: `验证JSON失败: ${validationError.message}`
-                });
+                // 尝试解析JSON
+                const jsonObj = JSON.parse(result.content);
+                setContent(JSON.stringify(jsonObj, null, 2));
+                setParsedJson(jsonObj);
+              } catch (jsonError) {
+                // 如果解析失败，直接显示内容
+                setContent(result.content);
+                setError(`JSON解析错误: ${jsonError.message}`);
               }
             } else {
-              setValidationResult(null);
+              setError(`无法读取文件: ${result.error}`);
             }
           } else {
-            setError(`无法读取文件: ${result.error}`);
-            setFileContent(null);
-            setValidationResult(null);
+            setError('不支持预览此类型的文件，仅支持JSON文件');
           }
+        } else {
+          setError('Electron IPC不可用，无法读取文件');
         }
       } catch (error) {
-        console.error('读取文件内容失败:', error);
-        setError(`读取文件内容失败: ${error.message}`);
-        setFileContent(null);
-        setValidationResult(null);
+        setError(`读取文件失败: ${error.message}`);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
-
+    
     loadFileContent();
   }, [file]);
-
-  // 判断文件类型，用于格式化显示
-  const getFileType = () => {
-    if (!file) return '';
-    if (file.isDirectory) return 'folder';
+  
+  // 格式化文件大小
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 B';
     
-    const extension = file.name.split('.').pop().toLowerCase();
-    switch (extension) {
-      case 'json':
-        return 'json';
-      case 'md':
-        return 'markdown';
-      case 'js':
-      case 'jsx':
-        return 'javascript';
-      case 'ts':
-      case 'tsx':
-        return 'typescript';
-      case 'html':
-        return 'html';
-      case 'css':
-      case 'scss':
-        return 'css';
-      default:
-        return 'text';
-    }
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    
+    return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
   };
-
-  // 格式化JSON显示
-  const formatJsonContent = (jsonString) => {
+  
+  // 格式化日期
+  const formatDate = (dateString) => {
     try {
-      const parsed = JSON.parse(jsonString);
-      return JSON.stringify(parsed, null, 2);
+      const date = new Date(dateString);
+      return date.toLocaleString();
     } catch (error) {
-      return jsonString; // 如果解析失败，返回原始内容
+      return '未知时间';
     }
   };
-
-  // 渲染文件内容
-  const renderFileContent = () => {
-    if (!fileContent) return null;
-
-    const fileType = getFileType();
-    if (fileType === 'json') {
-      return (
-        <pre className="file-content json">
-          {formatJsonContent(fileContent)}
-        </pre>
-      );
-    }
-
-    // 其他文件类型直接显示为文本
+  
+  // 检测行为树JSON结构
+  const isBehaviorTree = (json) => {
+    if (!json) return false;
+    
+    // 检查是否有行为树的特征
     return (
-      <pre className={`file-content ${fileType}`}>
-        {fileContent}
-      </pre>
+      (json.rootNode && Array.isArray(json.nodes)) || // 第一种格式
+      (Array.isArray(json.nodes) && Array.isArray(json.edges)) // 第二种格式
     );
   };
-
-  // 渲染文件详情信息
-  const renderFileDetails = () => {
-    if (!file) return null;
-
-    return (
-      <div className="file-details">
-        <div className="detail-item">
-          <span className="detail-label">名称:</span>
-          <span className="detail-value">{file.name}</span>
-        </div>
+  
+  // 获取行为树节点数量
+  const getNodeCount = (json) => {
+    if (!json || !json.nodes) return 0;
+    return json.nodes.length;
+  };
+  
+  // 获取行为树结构信息
+  const getBehaviorTreeInfo = (json) => {
+    if (!json) return null;
+    
+    let rootNodeId = null;
+    let nodeTypes = {};
+    let maxDepth = 0;
+    
+    // 获取根节点ID
+    if (json.rootNode) {
+      rootNodeId = json.rootNode;
+    } else if (json.nodes && json.nodes.length > 0) {
+      // 尝试找出根节点（没有父节点的节点）
+      if (json.edges) {
+        const childNodeIds = json.edges.map(edge => edge.target);
+        rootNodeId = json.nodes.find(node => !childNodeIds.includes(node.id))?.id;
+      }
+    }
+    
+    // 统计节点类型
+    if (json.nodes) {
+      json.nodes.forEach(node => {
+        if (node.type) {
+          nodeTypes[node.type] = (nodeTypes[node.type] || 0) + 1;
+        }
+      });
+    }
+    
+    // 计算树的最大深度
+    if (json.nodes && json.edges) {
+      const nodeMap = {};
+      json.nodes.forEach(node => {
+        nodeMap[node.id] = { ...node, children: [] };
+      });
+      
+      json.edges.forEach(edge => {
+        if (nodeMap[edge.source] && nodeMap[edge.target]) {
+          nodeMap[edge.source].children.push(nodeMap[edge.target]);
+        }
+      });
+      
+      const calculateDepth = (nodeId, depth = 1) => {
+        if (!nodeMap[nodeId] || !nodeMap[nodeId].children.length) {
+          return depth;
+        }
         
-        {!file.isDirectory && (
-          <div className="detail-item">
-            <span className="detail-label">大小:</span>
-            <span className="detail-value">{formatFileSize(file.size || 0)}</span>
+        return Math.max(...nodeMap[nodeId].children.map(child => 
+          calculateDepth(child.id, depth + 1)
+        ));
+      };
+      
+      if (rootNodeId) {
+        maxDepth = calculateDepth(rootNodeId);
+      }
+    }
+    
+    return {
+      nodeCount: getNodeCount(json),
+      rootNodeId,
+      nodeTypes,
+      maxDepth
+    };
+  };
+  
+  // 处理在编辑器中打开
+  const handleOpenInEditor = () => {
+    if (file && onOpenEditor) {
+      onOpenEditor(file.path);
+    }
+  };
+  
+  // 如果没有选择文件
+  if (!file) {
+    return null;
+  }
+  
+  // 获取行为树信息
+  const behaviorTreeInfo = isBehaviorTree(parsedJson) ? getBehaviorTreeInfo(parsedJson) : null;
+  
+  return (
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column',
+      height: '100%',
+      overflow: 'hidden'
+    }}>
+      {/* 文件信息头部 */}
+      <div style={{ 
+        padding: '12px 0',
+        borderBottom: '1px solid #f0f0f0',
+        marginBottom: '16px'
+      }}>
+        <div style={{ 
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '12px'
+        }}>
+          {/* 文件图标 */}
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '8px',
+            background: '#f0f0ff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#722ED1'
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M14 2v6h6M16 13H8M16 17H8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </div>
-        )}
-        
-        <div className="detail-item">
-          <span className="detail-label">类型:</span>
-          <span className="detail-value">
-            {file.isDirectory ? '文件夹' : (file.type ? `.${file.type}` : '未知')}
-          </span>
-        </div>
-        
-        <div className="detail-item">
-          <span className="detail-label">修改日期:</span>
-          <span className="detail-value">{formatDate(file.lastModified || new Date())}</span>
-        </div>
-        
-        <div className="detail-item">
-          <span className="detail-label">路径:</span>
-          <span className="detail-value path">{file.path}</span>
-        </div>
-      </div>
-    );
-  };
-
-  // 渲染行为树验证结果
-  const renderValidationResult = () => {
-    if (!validationResult) return null;
-
-    return (
-      <div className={`validation-result ${validationResult.isValid ? 'valid' : 'invalid'}`}>
-        <div className="validation-icon">
-          {validationResult.isValid ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-          )}
-        </div>
-        <div className="validation-message">
-          {validationResult.message}
           
-          {validationResult.isValid && onOpenProject && (
-            <div className="validation-action">
-              <button 
-                className="btn-open-project" 
-                onClick={() => onOpenProject(file.path)}
-              >
-                打开行为树
-              </button>
+          {/* 文件名和路径 */}
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <h3 style={{ 
+              margin: 0, 
+              fontSize: '16px',
+              fontWeight: 600,
+              color: '#333',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {file.name}
+            </h3>
+            <p style={{ 
+              margin: '4px 0 0 0',
+              fontSize: '13px',
+              color: '#666',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {file.path}
+            </p>
+          </div>
+        </div>
+        
+        {/* 文件详细信息 */}
+        <div style={{
+          display: 'flex',
+          gap: '16px',
+          fontSize: '13px',
+          color: '#666',
+          flexWrap: 'wrap'
+        }}>
+          <div>
+            <span style={{ color: '#999' }}>大小:</span> {formatFileSize(file.size || 0)}
+          </div>
+          <div>
+            <span style={{ color: '#999' }}>修改时间:</span> {formatDate(file.lastModified)}
+          </div>
+          {file.created && (
+            <div>
+              <span style={{ color: '#999' }}>创建时间:</span> {formatDate(file.created)}
             </div>
           )}
         </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="file-preview">
-      {!file ? (
-        <div className="no-file-selected">
-          <div className="no-file-icon">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <path d="M12 18v-6M9 15h6"></path>
-            </svg>
-          </div>
-          <p>未选择文件</p>
-          <p className="tip">从左侧选择一个文件以查看预览</p>
-        </div>
-      ) : (
-        <>
-          <div className="preview-header">
-            <h3 className="preview-title">
-              <span className="preview-icon">
-                {file.isDirectory ? (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"></path>
-                  </svg>
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                  </svg>
-                )}
-              </span>
-              {file.name}
-            </h3>
-          </div>
-
-          <div className="preview-content">
-            {/* 文件详情 */}
-            {renderFileDetails()}
-            
-            {/* 行为树验证结果 */}
-            {!file.isDirectory && file.name.toLowerCase().endsWith('.json') && (
-              renderValidationResult()
-            )}
-            
-            {file.isDirectory ? (
-              <div className="directory-message">
-                <p>这是一个文件夹，请打开以查看内容</p>
+        
+        {/* 行为树信息 */}
+        {behaviorTreeInfo && (
+          <div style={{
+            marginTop: '12px',
+            padding: '12px',
+            background: '#f9f9ff',
+            borderRadius: '6px',
+            border: '1px solid #e6e6ff'
+          }}>
+            <h4 style={{ 
+              margin: '0 0 8px 0', 
+              fontSize: '14px',
+              fontWeight: 600,
+              color: '#722ED1'
+            }}>
+              行为树信息
+            </h4>
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '12px',
+              fontSize: '13px'
+            }}>
+              <div>
+                <span style={{ color: '#999' }}>节点数量:</span> {behaviorTreeInfo.nodeCount}
               </div>
-            ) : isLoading ? (
-              <div className="loading-indicator">加载文件内容中...</div>
-            ) : error ? (
-              <div className="error-message">{error}</div>
-            ) : (
-              renderFileContent()
+              {behaviorTreeInfo.maxDepth > 0 && (
+                <div>
+                  <span style={{ color: '#999' }}>最大深度:</span> {behaviorTreeInfo.maxDepth}
+                </div>
+              )}
+              {behaviorTreeInfo.rootNodeId && (
+                <div>
+                  <span style={{ color: '#999' }}>根节点ID:</span> {behaviorTreeInfo.rootNodeId}
+                </div>
+              )}
+            </div>
+            
+            {/* 节点类型统计 */}
+            {Object.keys(behaviorTreeInfo.nodeTypes).length > 0 && (
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>节点类型:</div>
+                <div style={{ 
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                  fontSize: '12px'
+                }}>
+                  {Object.entries(behaviorTreeInfo.nodeTypes).map(([type, count]) => (
+                    <div key={type} style={{
+                      padding: '2px 8px',
+                      background: '#eeeeff',
+                      borderRadius: '12px',
+                      color: '#722ED1'
+                    }}>
+                      {type}: {count}
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
-        </>
-      )}
-
-      <style jsx>{`
-        .file-preview {
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          background-color: var(--bg-primary);
-          overflow: hidden;
-        }
+        )}
+      </div>
+      
+      {/* 文件内容预览 */}
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        {loading ? (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            padding: '20px',
+            color: '#999'
+          }}>
+            <span>加载中...</span>
+          </div>
+        ) : error ? (
+          <div style={{ 
+            padding: '16px', 
+            color: '#dc3545',
+            fontSize: '14px',
+            background: '#fff5f5',
+            border: '1px solid #ffeeee',
+            borderRadius: '6px',
+            marginBottom: '16px'
+          }}>
+            {error}
+          </div>
+        ) : (
+          <pre style={{ 
+            margin: 0,
+            padding: '16px',
+            background: '#f8f9fa',
+            border: '1px solid #eee',
+            borderRadius: '4px',
+            fontSize: '13px',
+            lineHeight: 1.5,
+            fontFamily: 'Consolas, monospace',
+            overflow: 'auto',
+            color: '#333',
+            whiteSpace: 'pre-wrap'
+          }}>
+            {content}
+          </pre>
+        )}
+      </div>
+      
+      {/* 底部操作栏 */}
+      <div style={{
+        marginTop: '16px',
+        display: 'flex',
+        justifyContent: 'flex-end',
+        gap: '12px'
+      }}>
+        <button 
+          onClick={() => {
+            if (file && file.path.endsWith('.json')) {
+              window.electron?.ipcRenderer.invoke('validate-behavior-tree', file.path)
+                .then(result => {
+                  if (result.isValid) {
+                    alert('行为树验证通过！');
+                  } else {
+                    alert(`行为树验证失败: ${result.message}`);
+                  }
+                })
+                .catch(err => {
+                  alert(`验证过程出错: ${err.message}`);
+                });
+            }
+          }}
+          style={{
+            padding: '8px 16px',
+            background: '#fff',
+            border: '1px solid #d9d9d9',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '13px',
+            color: '#333',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#722ED1';
+            e.currentTarget.style.color = '#722ED1';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = '#d9d9d9';
+            e.currentTarget.style.color = '#333';
+          }}
+        >
+          验证行为树
+        </button>
         
-        .no-file-selected {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          height: 100%;
-          color: var(--text-secondary);
-        }
-        
-        .no-file-icon {
-          margin-bottom: 16px;
-          color: var(--text-disabled);
-        }
-        
-        .no-file-selected p {
-          margin: 4px 0;
-        }
-        
-        .no-file-selected .tip {
-          font-size: 13px;
-          color: var(--text-secondary);
-        }
-        
-        .preview-header {
-          padding: 16px;
-          border-bottom: 1px solid var(--border-color);
-        }
-        
-        .preview-title {
-          margin: 0;
-          font-size: 16px;
-          font-weight: 500;
-          color: var(--text-primary);
-          display: flex;
-          align-items: center;
-        }
-        
-        .preview-icon {
-          margin-right: 8px;
-          display: flex;
-          align-items: center;
-        }
-        
-        .preview-content {
-          flex: 1;
-          overflow: auto;
-          padding: 16px;
-        }
-        
-        .file-details {
-          background-color: var(--bg-secondary);
-          border-radius: 4px;
-          padding: 16px;
-          margin-bottom: 16px;
-        }
-        
-        .detail-item {
-          display: flex;
-          margin-bottom: 8px;
-        }
-        
-        .detail-item:last-child {
-          margin-bottom: 0;
-        }
-        
-        .detail-label {
-          width: 80px;
-          color: var(--text-secondary);
-          font-size: 14px;
-        }
-        
-        .detail-value {
-          flex: 1;
-          color: var(--text-primary);
-          font-size: 14px;
-          word-break: break-all;
-        }
-        
-        .detail-value.path {
-          font-family: monospace;
-          font-size: 12px;
-          color: var(--text-secondary);
-        }
-        
-        .file-content {
-          background-color: var(--bg-secondary);
-          border-radius: 4px;
-          padding: 16px;
-          white-space: pre-wrap;
-          overflow-wrap: break-word;
-          font-family: monospace;
-          font-size: 13px;
-          line-height: 1.5;
-          color: var(--text-primary);
-          margin: 0;
-        }
-        
-        .directory-message {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          height: 100px;
-          color: var(--text-secondary);
-          font-style: italic;
-        }
-        
-        .loading-indicator {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          height: 100px;
-          color: var(--text-secondary);
-        }
-        
-        .error-message {
-          padding: 16px;
-          border-radius: 4px;
-          background-color: rgba(255, 59, 48, 0.1);
-          color: var(--color-danger);
-          margin-bottom: 16px;
-        }
-        
-        .validation-result {
-          display: flex;
-          align-items: flex-start;
-          padding: 12px 16px;
-          margin-bottom: 16px;
-          border-radius: 4px;
-        }
-        
-        .validation-result.valid {
-          background-color: rgba(52, 199, 89, 0.1);
-          color: var(--color-success);
-          border: 1px solid rgba(52, 199, 89, 0.2);
-        }
-        
-        .validation-result.invalid {
-          background-color: rgba(255, 59, 48, 0.1);
-          color: var(--color-danger);
-          border: 1px solid rgba(255, 59, 48, 0.2);
-        }
-        
-        .validation-icon {
-          margin-right: 12px;
-          display: flex;
-          align-items: center;
-        }
-        
-        .validation-message {
-          flex: 1;
-        }
-        
-        .validation-action {
-          margin-top: 12px;
-        }
-        
-        .btn-open-project {
-          background-color: var(--color-primary);
-          color: white;
-          border: none;
-          border-radius: 4px;
-          padding: 8px 16px;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        
-        .btn-open-project:hover {
-          background-color: var(--color-primary-dark, #5b25a8);
-        }
-      `}</style>
+        <button 
+          onClick={handleOpenInEditor}
+          style={{
+            padding: '8px 16px',
+            background: '#722ED1',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '13px',
+            color: '#fff',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#5b25a8';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#722ED1';
+          }}
+        >
+          在编辑器中打开
+        </button>
+      </div>
     </div>
   );
 };

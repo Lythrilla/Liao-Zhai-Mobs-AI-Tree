@@ -58,6 +58,73 @@ const EditorApp = () => {
   
   const navigate = useNavigate();
   
+  // 初始化历史记录
+  const initializeHistory = useCallback(() => {
+    if (canvasRef.current) {
+      const initialNodes = canvasRef.current.getNodes();
+      const initialEdges = canvasRef.current.getEdges();
+      
+      if (initialNodes.length > 0) {
+        // 初始化历史记录
+        const initialState = { nodes: initialNodes, edges: initialEdges };
+        setHistory([initialState]);
+        setHistoryIndex(0);
+        setCanUndo(false);
+        setCanRedo(false);
+        
+        console.log('历史记录已初始化', initialState);
+      }
+    }
+  }, [canvasRef]);
+
+  // 初始化历史记录
+  useEffect(() => {
+    // 组件挂载后延迟初始化，确保canvasRef已经设置
+    const timer = setTimeout(initializeHistory, 100);
+    return () => clearTimeout(timer);
+  }, [initializeHistory]);
+
+  // 检查是否有通过IPC加载的文件
+  useEffect(() => {
+    const checkLoadedFile = async () => {
+      if (window.electron && window.electron.ipcRenderer) {
+        try {
+          console.log('检查是否有已加载的文件...');
+          // 获取当前已加载的文件数据
+          const result = await window.electron.ipcRenderer.invoke('get-current-file');
+          console.log('获取到文件结果:', result);
+          
+          if (result && result.success && result.data) {
+            console.log('从IPC获取到已加载的文件:', result.filePath);
+            console.log('文件数据类型:', typeof result.data);
+            console.log('文件数据包含节点数量:', result.data.nodes ? result.data.nodes.length : 0);
+            
+            // 如果有数据，则加载到编辑器中
+            if (canvasRef.current && result.data) {
+              console.log('开始加载文件到编辑器...');
+              const loadResult = canvasRef.current.loadFromJson(result.data);
+              console.log('加载文件结果:', loadResult);
+              
+              if (loadResult) {
+                // 初始化历史记录
+                console.log('初始化历史记录...');
+                initializeHistory();
+              }
+            }
+          } else {
+            console.log('没有已加载的文件或加载失败');
+          }
+        } catch (error) {
+          // 如果get-current-file处理程序不存在，不会报错
+          console.log('尝试获取已加载文件出错:', error.message);
+        }
+      }
+    };
+    
+    // 组件挂载后检查
+    checkLoadedFile();
+  }, [initializeHistory]);
+  
   // 处理设置变更
   const handleSettingChange = useCallback((key, value) => {
     setSettings(prevSettings => {
@@ -1100,29 +1167,6 @@ const EditorApp = () => {
     contextMenu.visible,
     hideContextMenu
   ]);
-
-  // 初始化历史记录
-  useEffect(() => {
-    const initializeHistory = () => {
-      if (canvasRef.current) {
-        const initialNodes = canvasRef.current.getNodes();
-        const initialEdges = canvasRef.current.getEdges();
-        
-        if (initialNodes.length > 0) {
-          // 初始化历史记录
-          const initialState = { nodes: initialNodes, edges: initialEdges };
-          setHistory([initialState]);
-          setHistoryIndex(0);
-          setCanUndo(false);
-          setCanRedo(false);
-        }
-      }
-    };
-    
-    // 组件挂载后延迟初始化，确保canvasRef已经设置
-    const timer = setTimeout(initializeHistory, 100);
-    return () => clearTimeout(timer);
-  }, []);
 
   // 处理节点双击事件
   const handleNodeDoubleClick = useCallback((event, node) => {

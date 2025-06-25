@@ -1,179 +1,102 @@
 import React from 'react';
-import { formatDate } from '../../utils/fileUtils';
 
-const RecentProjects = ({ projects = [], isLoading = false, onOpenProject }) => {
-  // 处理点击项目
-  const handleProjectClick = (projectPath) => {
-    if (onOpenProject) {
-      onOpenProject(projectPath);
-    }
-  };
+const RecentProjects = ({ projects, onProjectClick }) => {
+  // 如果没有项目，显示空状态
+  if (!projects || projects.length === 0) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px 16px',
+        height: '100%',
+        color: '#999',
+        textAlign: 'center'
+      }}>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: '16px', opacity: 0.5 }}>
+          <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M12 11v6M9 14h6" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <p style={{ fontSize: '14px', margin: 0 }}>暂无最近项目</p>
+        <p style={{ fontSize: '12px', margin: '8px 0 0 0', opacity: 0.7 }}>打开或创建项目后将显示在这里</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="recent-projects">
-      {isLoading ? (
-        <div className="loading-indicator">加载中...</div>
-      ) : projects.length === 0 ? (
-        <div className="no-projects">
-          <div className="no-projects-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"></path>
-              <path d="M13 2v7h7"></path>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {projects.map((project, index) => (
+        <div
+          key={index}
+          onClick={() => onProjectClick(project)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '10px 12px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            background: '#f9f9f9',
+            border: '1px solid #f0f0f0'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#f0f0ff';
+            e.currentTarget.style.borderColor = '#d6d6ff';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = '#f9f9f9';
+            e.currentTarget.style.borderColor = '#f0f0f0';
+          }}
+        >
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '6px',
+            background: '#eeeeff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: '12px',
+            color: '#722ED1'
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M14 2v6h6M9 13h6M9 17h6" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <p>没有最近的项目</p>
-          <p className="tip">创建一个新项目或打开现有项目以开始使用</p>
-        </div>
-      ) : (
-        <div className="projects-list">
-          {projects.map((project, index) => (
-            <div 
-              key={index} 
-              className="project-card"
-              onClick={() => handleProjectClick(project.path)}
-            >
-              <div className="project-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"></path>
-                  <path d="M13 2v7h7"></path>
-                </svg>
-              </div>
-              <div className="project-info">
-                <h3 className="project-name">{project.name || '未命名项目'}</h3>
-                <p className="project-path">{project.path}</p>
-                <p className="project-date">最后打开: {formatDate(project.lastOpened || new Date())}</p>
-              </div>
-              <div className="project-actions">
-                <button className="action-btn" onClick={(e) => {
-                  e.stopPropagation();
-                  handleProjectClick(project.path);
-                }}>
-                  打开
-                </button>
-              </div>
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <div style={{
+              fontSize: '14px',
+              fontWeight: 500,
+              color: '#333',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {project.name || project.path.split('/').pop().split('\\').pop()}
             </div>
-          ))}
+            <div style={{
+              fontSize: '12px',
+              color: '#999',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              marginTop: '2px'
+            }}>
+              {project.path}
+            </div>
+          </div>
+          <div style={{
+            fontSize: '12px',
+            color: '#999',
+            whiteSpace: 'nowrap',
+            marginLeft: '8px'
+          }}>
+            {project.lastOpened ? new Date(project.lastOpened).toLocaleDateString() : ''}
+          </div>
         </div>
-      )}
-
-      <style jsx="true">{`
-        .recent-projects {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-          overflow-y: auto;
-        }
-        
-        .loading-indicator {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          height: 100px;
-          color: var(--text-secondary);
-        }
-        
-        .no-projects {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 40px 0;
-          color: var(--text-secondary);
-        }
-        
-        .no-projects-icon {
-          color: var(--text-disabled);
-          margin-bottom: 16px;
-        }
-        
-        .no-projects p {
-          margin: 4px 0;
-        }
-        
-        .no-projects .tip {
-          font-size: 13px;
-          color: var(--text-secondary);
-        }
-        
-        .projects-list {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-        
-        .project-card {
-          display: flex;
-          align-items: start;
-          padding: 12px;
-          border-radius: 6px;
-          background-color: var(--bg-secondary);
-          transition: all 0.2s ease;
-          cursor: pointer;
-          border: 1px solid transparent;
-        }
-        
-        .project-card:hover {
-          border-color: var(--color-primary-light);
-          background-color: var(--bg-secondary-hover);
-        }
-        
-        .project-icon {
-          margin-right: 12px;
-          color: var(--color-primary);
-          flex-shrink: 0;
-        }
-        
-        .project-info {
-          flex: 1;
-          min-width: 0;
-        }
-        
-        .project-name {
-          margin: 0 0 4px;
-          font-size: 14px;
-          font-weight: 500;
-          color: var(--text-primary);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-        
-        .project-path {
-          margin: 0 0 2px;
-          font-size: 12px;
-          color: var(--text-secondary);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-        
-        .project-date {
-          margin: 0;
-          font-size: 12px;
-          color: var(--text-secondary);
-        }
-        
-        .project-actions {
-          margin-left: 8px;
-          flex-shrink: 0;
-        }
-        
-        .action-btn {
-          padding: 4px 10px;
-          font-size: 12px;
-          border-radius: 4px;
-          border: none;
-          background-color: var(--color-primary);
-          color: white;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          outline: none;
-        }
-        
-        .action-btn:hover {
-          background-color: var(--color-primary-dark, #5b25a8);
-        }
-      `}</style>
+      ))}
     </div>
   );
 };

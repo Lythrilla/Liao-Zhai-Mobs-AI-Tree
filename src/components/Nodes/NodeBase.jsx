@@ -59,7 +59,7 @@ const EnhancedHandle = ({ type, position, id, style, left, label, onHover, alway
     border: `2px solid ${hover ? '#722ED1' : '#9254DE'}`,
     boxShadow: hover ? '0 0 0 2px rgba(255, 255, 255, 0.5), 0 0 4px rgba(114, 46, 209, 0.3)' : 'none',
     transition: 'all 0.2s ease',
-    zIndex: 5
+    zIndex: 10
   };
   
   return (
@@ -71,7 +71,7 @@ const EnhancedHandle = ({ type, position, id, style, left, label, onHover, alway
         id={id}
         style={{...enhancedStyle, left: left ? `${left}%` : undefined}}
       />
-      {label && <PortLabel text={label} position={position === Position.Top ? 'top' : 'bottom'} left={left} visible={hover} alwaysShow={alwaysShowLabels} />}
+      {label && (hover || alwaysShowLabels) && <PortLabel text={label} position={position === Position.Top ? 'top' : 'bottom'} left={left} visible={hover} alwaysShow={alwaysShowLabels} />}
     </>
   );
 };

@@ -23,7 +23,9 @@ const validInvokeChannels = [
   'get-system-drives',
   'save-app-state',
   'get-app-state',
-  'validate-behavior-tree'
+  'validate-behavior-tree',
+  'store-current-file',
+  'get-current-file'
 ];
 
 const validReceiveChannels = [

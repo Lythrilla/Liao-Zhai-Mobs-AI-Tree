@@ -99,7 +99,7 @@ const Breadcrumb = ({ path: currentPath, onNavigate }) => {
         </>
       )}
 
-      <style jsx>{`
+      <style jsx="true">{`
         .breadcrumb {
           display: flex;
           align-items: center;

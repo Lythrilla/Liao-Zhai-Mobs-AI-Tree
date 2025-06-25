@@ -35,14 +35,17 @@ const nodeTypes = {
   MoveTo: NodeBase,
   LeaveMoveTo: NodeBase,
   Rotate: NodeBase,
-  // 注册服务节点类型
   Parallel: NodeBase,
   BlackboardMonitorService: NodeBase,
   DistanceCheckService: NodeBase,
   LineOfSightService: NodeBase,
   PatrolService: NodeBase,
   StateUpdateService: NodeBase,
-  RandomValueService: NodeBase
+  RandomValueService: NodeBase,
+  ExecuteAction: NodeBase,
+  PlayAnimation: NodeBase,
+  ConditionCheck: NodeBase,
+  PlaySound: NodeBase
 };
 
 // 初始节点
@@ -350,6 +353,76 @@ const NodeCanvas = forwardRef(({
     // 子图相关功能
     createSubgraph,
     
+    // 从JSON数据加载行为树
+    loadFromJson: (jsonData) => {
+      try {
+        console.log('加载JSON数据到编辑器:', typeof jsonData);
+        let data;
+        
+        // 如果传入的是字符串，尝试解析
+        if (typeof jsonData === 'string') {
+          data = JSON.parse(jsonData);
+        } else {
+          data = jsonData;
+        }
+        
+        console.log('解析后的JSON数据:', data);
+        
+        // 检查数据格式
+        if (data && data.nodes && Array.isArray(data.nodes)) {
+          // 处理节点数据，确保每个节点都有正确的类型和位置
+          const processedNodes = data.nodes.map(node => {
+            // 确保节点有正确的类型，如果没有指定则使用默认类型
+            const nodeType = node.type || 'default';
+            
+            console.log('处理节点:', node.id, nodeType);
+            
+            return {
+              ...node,
+              type: nodeType,
+              // 确保位置属性存在
+              position: node.position || { x: 0, y: 0 },
+              // 确保data属性存在
+              data: {
+                ...node.data,
+                nodeType: node.data?.nodeType || nodeType
+              }
+            };
+          });
+          
+          // 处理边数据
+          const processedEdges = data.edges && Array.isArray(data.edges) 
+            ? data.edges.map(edge => ({
+                ...edge,
+                animated: true,
+                style: { stroke: '#722ED1' }
+              }))
+            : [];
+          
+          console.log('处理后的节点数量:', processedNodes.length);
+          console.log('处理后的边数量:', processedEdges.length);
+          
+          // 更新画布
+          setNodes(processedNodes);
+          setEdges(processedEdges);
+          
+          // 重置视图
+          setTimeout(() => {
+            reactFlowInstance.fitView({ padding: 0.2 });
+            console.log('视图已重置');
+          }, 100);
+          
+          return true;
+        } else {
+          console.error('无效的JSON数据格式:', data);
+          return false;
+        }
+      } catch (error) {
+        console.error('加载JSON数据失败:', error);
+        return false;
+      }
+    },
+    
     // 导出为JSON数据
     exportToJson: () => {
       return JSON.stringify({
@@ -377,7 +450,7 @@ const NodeCanvas = forwardRef(({
         nodeTypes={nodeTypesWithSettings}
         snapToGrid={true}
         snapGrid={[15, 15]}
-        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        defaultviewport={{ x: 0, y: 0, zoom: 1 }}
         attributionPosition="bottom-left"
         onDragOver={dragHandlers.onDragOver}
         onDrop={dropHandlers.onDrop}
@@ -385,15 +458,20 @@ const NodeCanvas = forwardRef(({
         onPaneContextMenu={(event) => onContextMenu && onContextMenu(event, null)}
         multiSelectionKeyCode="Shift"
         selectionKeyCode={null}
-        selectionOnDrag={true}
+        selectionondrag={true}
         selectNodesOnDrag={false}
         elementsSelectable={true}
         deleteKeyCode="Delete"
         panOnDrag={[0, 1, 2]}
         panOnScroll={true}
+        zoomActivationKeyCode="Control"
         zoomOnScroll={true}
         zoomOnPinch={true}
         zoomOnDoubleClick={false}
+        minZoom={0.1}
+        maxZoom={4}
+        preventScrolling={false}
+        zoomStep={0.01}
       >
         <Controls />
         <MiniMap 

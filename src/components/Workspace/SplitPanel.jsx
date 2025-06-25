@@ -85,7 +85,7 @@ const SplitPanel = ({ children, initialRatio = 0.25, minRatio = 0.1, maxRatio = 
         {rightComponent}
       </div>
 
-      <style jsx>{`
+      <style jsx="true">{`
         .split-panel-container {
           display: flex;
           width: 100%;
