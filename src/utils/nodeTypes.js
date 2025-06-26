@@ -3,12 +3,12 @@ export const NodeTypes = {
   // 元节点
   ROOT: 'RootNode',
   SUBGRAPH: 'SubgraphNode',
-  
+
   // 组合节点
   SELECTOR: 'Selector',
   SEQUENCE: 'Sequence',
   SIMPLE_PARALLEL: 'SimpleParallel',
-  
+
   // 装饰器节点
   INVERTER: 'Inverter',
   FORCE_SUCCESS: 'ForceSuccess',
@@ -17,7 +17,7 @@ export const NodeTypes = {
   COOLDOWN: 'Cooldown',
   TIMEOUT: 'Timeout',
   BLACKBOARD: 'Blackboard',
-  
+
   // 叶节点
   WAIT: 'Wait',
   PRINT_STRING: 'PrintString',
@@ -30,7 +30,7 @@ export const NodeTypes = {
   PLAY_SOUND: 'PlaySound',
   CONDITION_CHECK: 'ConditionCheck',
   EXECUTE_ACTION: 'ExecuteAction',
-  
+
   // 服务节点
   PARALLEL: 'Parallel',
   BLACKBOARD_MONITOR: 'BlackboardMonitorService',
@@ -64,7 +64,7 @@ export const NodeData = {
     color: '#722ED1',
     customClass: 'node-root'
   },
-  
+
   // 控制流节点
   [NodeTypes.SELECTOR]: {
     name: '选择器',
@@ -79,7 +79,7 @@ export const NodeData = {
     color: '#165DFF',
     customClass: 'node-selector'
   },
-  
+
   [NodeTypes.SEQUENCE]: {
     name: '序列',
     category: NodeCategories.COMPOSITE,
@@ -88,19 +88,19 @@ export const NodeData = {
     outputs: ['子节点'],
     params: [
       { name: '权重', key: 'weight', type: 'number', default: 1 },
-      { name: '失败策略', key: 'failurePolicy', type: 'select', options: ['立刻返回', '结束全部', '重试'], default: '立刻返回' },
-      { 
-        name: '重试次数', 
-        key: 'retryCount', 
+      { name: '失败策略', key: 'failurePolicy', type: 'select', options: ['立刻返回', '失败重试'], default: '立刻返回' },
+      {
+        name: '重试次数',
+        key: 'retryCount',
         type: 'number',
         default: 1,
-        visible: (params) => params.failurePolicy === '重试'
+        visible: (params) => params.failurePolicy === '失败重试'
       }
     ],
     color: '#0FC6C2',
     customClass: 'node-sequence'
   },
-  
+
   [NodeTypes.SIMPLE_PARALLEL]: {
     name: '简单平行',
     category: NodeCategories.COMPOSITE,
@@ -110,9 +110,9 @@ export const NodeData = {
     params: [
       { name: '权重', key: 'weight', type: 'number', default: 1 },
       { name: '结束模式', key: 'endMode', type: 'select', options: ['立即结束', '等待完成'], default: '立即结束' },
-      { 
-        name: '超时时间(秒)', 
-        key: 'timeout', 
+      {
+        name: '超时时间(秒)',
+        key: 'timeout',
         type: 'number',
         default: 0,
         visible: (params) => params.endMode === '等待完成'
@@ -121,7 +121,7 @@ export const NodeData = {
     color: '#FF7D00',
     customClass: 'node-parallel'
   },
-  
+
   // 修饰节点
   [NodeTypes.INVERTER]: {
     name: '反转器',
@@ -135,7 +135,7 @@ export const NodeData = {
     color: '#F7BA1E',
     customClass: 'node-decorator'
   },
-  
+
   [NodeTypes.FORCE_SUCCESS]: {
     name: '强制成功',
     category: NodeCategories.DECORATOR,
@@ -148,7 +148,7 @@ export const NodeData = {
     color: '#F7BA1E',
     customClass: 'node-decorator'
   },
-  
+
   [NodeTypes.FORCE_FAILURE]: {
     name: '强制失败',
     category: NodeCategories.DECORATOR,
@@ -161,7 +161,7 @@ export const NodeData = {
     color: '#F7BA1E',
     customClass: 'node-decorator'
   },
-  
+
   [NodeTypes.REPEAT]: {
     name: '重复器',
     category: NodeCategories.DECORATOR,
@@ -171,9 +171,9 @@ export const NodeData = {
     params: [
       { name: '权重', key: 'weight', type: 'number', default: 1 },
       { name: '重复模式', key: 'repeatMode', type: 'select', options: ['固定次数', '无限重复', '直到失败', '直到成功'], default: '固定次数' },
-      { 
-        name: '重复次数', 
-        key: 'repeatCount', 
+      {
+        name: '重复次数',
+        key: 'repeatCount',
         type: 'number',
         default: 1,
         visible: (params) => params.repeatMode === '固定次数'
@@ -182,7 +182,7 @@ export const NodeData = {
     color: '#F7BA1E',
     customClass: 'node-decorator'
   },
-  
+
   [NodeTypes.COOLDOWN]: {
     name: '冷却器',
     category: NodeCategories.DECORATOR,
@@ -196,7 +196,7 @@ export const NodeData = {
     color: '#F7BA1E',
     customClass: 'node-decorator'
   },
-  
+
   [NodeTypes.TIMEOUT]: {
     name: '超时器',
     category: NodeCategories.DECORATOR,
@@ -210,7 +210,7 @@ export const NodeData = {
     color: '#F7BA1E',
     customClass: 'node-decorator'
   },
-  
+
   [NodeTypes.BLACKBOARD]: {
     name: '黑板检查',
     category: NodeCategories.DECORATOR,
@@ -222,23 +222,23 @@ export const NodeData = {
       { name: '键名', key: 'keyName', type: 'string', default: '' },
       { name: '操作符', key: 'operator', type: 'select', options: ['等于', '不等于', '大于', '小于', '大于等于', '小于等于', '已设置', '未设置'], default: '等于' },
       { name: '值类型', key: 'valueType', type: 'select', options: ['数字', '文本', '布尔'], default: '数字' },
-      { 
-        name: '比较值', 
-        key: 'numericValue', 
+      {
+        name: '比较值',
+        key: 'numericValue',
         type: 'number',
         default: 0,
         visible: (params) => params.valueType === '数字' && !['已设置', '未设置'].includes(params.operator)
       },
-      { 
-        name: '比较值', 
-        key: 'textValue', 
+      {
+        name: '比较值',
+        key: 'textValue',
         type: 'string',
         default: '',
         visible: (params) => params.valueType === '文本' && !['已设置', '未设置'].includes(params.operator)
       },
-      { 
-        name: '比较值', 
-        key: 'boolValue', 
+      {
+        name: '比较值',
+        key: 'boolValue',
         type: 'select',
         options: ['真', '假'],
         default: '真',
@@ -248,7 +248,7 @@ export const NodeData = {
     color: '#F7BA1E',
     customClass: 'node-decorator'
   },
-  
+
   // 叶节点
   [NodeTypes.WAIT]: {
     name: '等待',
@@ -259,30 +259,30 @@ export const NodeData = {
     params: [
       { name: '权重', key: 'weight', type: 'number', default: 1 },
       { name: '等待模式', key: 'waitMode', type: 'select', options: ['固定时间', '随机时间', '黑板值'], default: '固定时间' },
-      { 
-        name: '等待时间(秒)', 
-        key: 'waitTime', 
+      {
+        name: '等待时间(秒)',
+        key: 'waitTime',
         type: 'number',
         default: 1.0,
         visible: (params) => params.waitMode === '固定时间'
       },
-      { 
-        name: '最小时间(秒)', 
-        key: 'minTime', 
+      {
+        name: '最小时间(秒)',
+        key: 'minTime',
         type: 'number',
         default: 0.5,
         visible: (params) => params.waitMode === '随机时间'
       },
-      { 
-        name: '最大时间(秒)', 
-        key: 'maxTime', 
+      {
+        name: '最大时间(秒)',
+        key: 'maxTime',
         type: 'number',
         default: 2.0,
         visible: (params) => params.waitMode === '随机时间'
       },
-      { 
-        name: '黑板键名', 
-        key: 'blackboardKey', 
+      {
+        name: '黑板键名',
+        key: 'blackboardKey',
         type: 'string',
         default: '',
         visible: (params) => params.waitMode === '黑板值'
@@ -291,7 +291,7 @@ export const NodeData = {
     color: '#00B42A',
     customClass: 'node-action'
   },
-  
+
   [NodeTypes.MOVE_TO]: {
     name: '移动到',
     category: NodeCategories.LEAF,
@@ -303,30 +303,30 @@ export const NodeData = {
       { name: '目标类型', key: 'targetType', type: 'select', options: ['仇恨目标', '坐标', '黑板对象', '玩家'], default: '黑板对象' },
       { name: '接受半径', key: 'acceptRadius', type: 'number', default: 1.0 },
       { name: '使用寻路', key: 'usePathfinding', type: 'select', options: ['是', '否'], default: '是' },
-      { 
-        name: '目标X', 
-        key: 'targetX', 
+      {
+        name: '目标X',
+        key: 'targetX',
         type: 'number',
         default: 0,
         visible: (params) => params.targetType === '坐标'
       },
-      { 
-        name: '目标Y', 
-        key: 'targetY', 
+      {
+        name: '目标Y',
+        key: 'targetY',
         type: 'number',
         default: 0,
         visible: (params) => params.targetType === '坐标'
       },
-      { 
-        name: '目标Z', 
-        key: 'targetZ', 
+      {
+        name: '目标Z',
+        key: 'targetZ',
         type: 'number',
         default: 0,
         visible: (params) => params.targetType === '坐标'
       },
-      { 
-        name: '黑板键名', 
-        key: 'blackboardKey', 
+      {
+        name: '黑板键名',
+        key: 'blackboardKey',
         type: 'string',
         default: '',
         visible: (params) => params.targetType === '黑板对象'
@@ -335,7 +335,7 @@ export const NodeData = {
     color: '#00B42A',
     customClass: 'node-action'
   },
-  
+
   [NodeTypes.LEAVE_MOVE_TO]: {
     name: '远离',
     category: NodeCategories.LEAF,
@@ -347,30 +347,30 @@ export const NodeData = {
       { name: '目标类型', key: 'targetType', type: 'select', options: ['仇恨目标', '坐标', '黑板对象', '玩家'], default: '黑板对象' },
       { name: '距离', key: 'distance', type: 'number', default: 1.0 },
       { name: '使用寻路', key: 'usePathfinding', type: 'select', options: ['是', '否'], default: '是' },
-      { 
-        name: '目标X', 
-        key: 'targetX', 
+      {
+        name: '目标X',
+        key: 'targetX',
         type: 'number',
         default: 0,
         visible: (params) => params.targetType === '坐标'
       },
-      { 
-        name: '目标Y', 
-        key: 'targetY', 
+      {
+        name: '目标Y',
+        key: 'targetY',
         type: 'number',
         default: 0,
         visible: (params) => params.targetType === '坐标'
       },
-      { 
-        name: '目标Z', 
-        key: 'targetZ', 
+      {
+        name: '目标Z',
+        key: 'targetZ',
         type: 'number',
         default: 0,
         visible: (params) => params.targetType === '坐标'
       },
-      { 
-        name: '黑板键名', 
-        key: 'blackboardKey', 
+      {
+        name: '黑板键名',
+        key: 'blackboardKey',
         type: 'string',
         default: '',
         visible: (params) => params.targetType === '黑板对象'
@@ -379,7 +379,7 @@ export const NodeData = {
     color: '#00B42A',
     customClass: 'node-action'
   },
-  
+
   [NodeTypes.ROTATE]: {
     name: '旋转',
     category: NodeCategories.LEAF,
@@ -390,16 +390,16 @@ export const NodeData = {
       { name: '权重', key: 'weight', type: 'number', default: 1 },
       { name: '旋转模式', key: 'rotateMode', type: 'select', options: ['朝向目标', '指定角度', '随机旋转'], default: '朝向目标' },
       { name: '旋转速度', key: 'rotateSpeed', type: 'number', default: 180 },
-      { 
-        name: '目标黑板键', 
-        key: 'targetKey', 
+      {
+        name: '目标黑板键',
+        key: 'targetKey',
         type: 'string',
         default: '',
         visible: (params) => params.rotateMode === '朝向目标'
       },
-      { 
-        name: '目标偏航角', 
-        key: 'targetYaw', 
+      {
+        name: '目标偏航角',
+        key: 'targetYaw',
         type: 'number',
         default: 0,
         visible: (params) => params.rotateMode === '指定角度'
@@ -408,7 +408,7 @@ export const NodeData = {
     color: '#00B42A',
     customClass: 'node-action'
   },
-  
+
   [NodeTypes.PRINT_STRING]: {
     name: '打印字符串',
     category: NodeCategories.LEAF,
@@ -418,30 +418,30 @@ export const NodeData = {
     params: [
       { name: '权重', key: 'weight', type: 'number', default: 1 },
       { name: '打印模式', key: 'printMode', type: 'select', options: ['固定文本', '黑板值', '格式化文本'], default: '固定文本' },
-      { 
-        name: '文本', 
-        key: 'text', 
+      {
+        name: '文本',
+        key: 'text',
         type: 'string',
         default: 'Hello World',
         visible: (params) => params.printMode === '固定文本'
       },
-      { 
-        name: '黑板键名', 
-        key: 'blackboardKey', 
+      {
+        name: '黑板键名',
+        key: 'blackboardKey',
         type: 'string',
         default: '',
         visible: (params) => params.printMode === '黑板值'
       },
-      { 
-        name: '格式字符串', 
-        key: 'formatString', 
+      {
+        name: '格式字符串',
+        key: 'formatString',
         type: 'string',
         default: '值: {0}',
         visible: (params) => params.printMode === '格式化文本'
       },
-      { 
-        name: '黑板键名', 
-        key: 'blackboardKey', 
+      {
+        name: '黑板键名',
+        key: 'blackboardKey',
         type: 'string',
         default: '',
         visible: (params) => params.printMode === '格式化文本'
@@ -450,7 +450,7 @@ export const NodeData = {
     color: '#00B42A',
     customClass: 'node-action'
   },
-  
+
   [NodeTypes.SET_BLACKBOARD_VALUE]: {
     name: '设置黑板值',
     category: NodeCategories.LEAF,
@@ -461,45 +461,45 @@ export const NodeData = {
       { name: '权重', key: 'weight', type: 'number', default: 1 },
       { name: '键名', key: 'keyName', type: 'string', default: '' },
       { name: '值类型', key: 'valueType', type: 'select', options: ['目标', '数字', '文本', '布尔', '向量'], default: '数字' },
-      { 
-        name: '值', 
-        key: 'numericValue', 
+      {
+        name: '值',
+        key: 'numericValue',
         type: 'number',
         default: 0,
         visible: (params) => params.valueType === '数字'
       },
-      { 
-        name: '值', 
-        key: 'textValue', 
+      {
+        name: '值',
+        key: 'textValue',
         type: 'string',
         default: '',
         visible: (params) => params.valueType === '文本'
       },
-      { 
-        name: '值', 
-        key: 'boolValue', 
+      {
+        name: '值',
+        key: 'boolValue',
         type: 'select',
         options: ['真', '假'],
         default: '真',
         visible: (params) => params.valueType === '布尔'
       },
-      { 
-        name: 'X', 
-        key: 'vectorX', 
+      {
+        name: 'X',
+        key: 'vectorX',
         type: 'number',
         default: 0,
         visible: (params) => params.valueType === '向量'
       },
-      { 
-        name: 'Y', 
-        key: 'vectorY', 
+      {
+        name: 'Y',
+        key: 'vectorY',
         type: 'number',
         default: 0,
         visible: (params) => params.valueType === '向量'
       },
-      { 
-        name: 'Z', 
-        key: 'vectorZ', 
+      {
+        name: 'Z',
+        key: 'vectorZ',
         type: 'number',
         default: 0,
         visible: (params) => params.valueType === '向量'
@@ -508,7 +508,7 @@ export const NodeData = {
     color: '#00B42A',
     customClass: 'node-action'
   },
-  
+
   [NodeTypes.GET_BLACKBOARD_VALUE]: {
     name: '获取黑板值',
     category: NodeCategories.LEAF,
@@ -522,7 +522,7 @@ export const NodeData = {
     color: '#00B42A',
     customClass: 'node-action'
   },
-  
+
   [NodeTypes.PLAY_ANIMATION]: {
     name: '播放动画',
     category: NodeCategories.LEAF,
@@ -538,7 +538,7 @@ export const NodeData = {
     color: '#00B42A',
     customClass: 'node-action'
   },
-  
+
   [NodeTypes.PLAY_SOUND]: {
     name: '播放声音',
     category: NodeCategories.LEAF,
@@ -550,16 +550,16 @@ export const NodeData = {
       { name: '声音名称', key: 'soundName', type: 'string', default: '' },
       { name: '声音类型', key: 'soundType', type: 'select', options: ['2D', '3D定位'], default: '2D' },
       { name: '音量', key: 'volume', type: 'number', default: 1.0 },
-      { 
-        name: '位置黑板键', 
-        key: 'positionKey', 
+      {
+        name: '位置黑板键',
+        key: 'positionKey',
         type: 'string',
         default: '',
         visible: (params) => params.soundType === '3D定位'
       },
-      { 
-        name: '衰减距离', 
-        key: 'attenuationDistance', 
+      {
+        name: '衰减距离',
+        key: 'attenuationDistance',
         type: 'number',
         default: 1000,
         visible: (params) => params.soundType === '3D定位'
@@ -568,7 +568,7 @@ export const NodeData = {
     color: '#00B42A',
     customClass: 'node-action'
   },
-  
+
   [NodeTypes.CONDITION_CHECK]: {
     name: '条件检查',
     category: NodeCategories.LEAF,
@@ -578,66 +578,66 @@ export const NodeData = {
     params: [
       { name: '权重', key: 'weight', type: 'number', default: 1 },
       { name: '条件类型', key: 'conditionType', type: 'select', options: ['距离检查', '血量检查', '能量检查', '自定义黑板'], default: '距离检查' },
-      { 
-        name: '目标黑板键', 
-        key: 'targetKey', 
+      {
+        name: '目标黑板键',
+        key: 'targetKey',
         type: 'string',
         default: '',
         visible: (params) => params.conditionType === '距离检查'
       },
-      { 
-        name: '最大距离', 
-        key: 'maxDistance', 
+      {
+        name: '最大距离',
+        key: 'maxDistance',
         type: 'number',
         default: 100.0,
         visible: (params) => params.conditionType === '距离检查'
       },
-      { 
-        name: '血量黑板键', 
-        key: 'healthKey', 
+      {
+        name: '血量黑板键',
+        key: 'healthKey',
         type: 'string',
         default: 'Health',
         visible: (params) => params.conditionType === '血量检查'
       },
-      { 
-        name: '最小血量', 
-        key: 'minHealth', 
+      {
+        name: '最小血量',
+        key: 'minHealth',
         type: 'number',
         default: 50.0,
         visible: (params) => params.conditionType === '血量检查'
       },
-      { 
-        name: '能量黑板键', 
-        key: 'energyKey', 
+      {
+        name: '能量黑板键',
+        key: 'energyKey',
         type: 'string',
         default: 'Energy',
         visible: (params) => params.conditionType === '能量检查'
       },
-      { 
-        name: '最小能量', 
-        key: 'minEnergy', 
+      {
+        name: '最小能量',
+        key: 'minEnergy',
         type: 'number',
         default: 30.0,
         visible: (params) => params.conditionType === '能量检查'
       },
-      { 
-        name: '键名', 
-        key: 'customKey', 
+      {
+        name: '键名',
+        key: 'customKey',
         type: 'string',
         default: '',
         visible: (params) => params.conditionType === '自定义黑板'
       },
-      { 
-        name: '操作符', 
-        key: 'customOperator', 
+      {
+        name: '操作符',
+        key: 'customOperator',
         type: 'select',
         options: ['等于', '不等于', '大于', '小于'],
         default: '等于',
         visible: (params) => params.conditionType === '自定义黑板'
       },
-      { 
-        name: '比较值', 
-        key: 'customValue', 
+      {
+        name: '比较值',
+        key: 'customValue',
         type: 'string',
         default: '',
         visible: (params) => params.conditionType === '自定义黑板'
@@ -646,7 +646,7 @@ export const NodeData = {
     color: '#00B42A',
     customClass: 'node-action'
   },
-  
+
   [NodeTypes.EXECUTE_ACTION]: {
     name: '执行动作',
     category: NodeCategories.LEAF,
@@ -656,58 +656,58 @@ export const NodeData = {
     params: [
       { name: '权重', key: 'weight', type: 'number', default: 1 },
       { name: '动作类型', key: 'actionType', type: 'select', options: ['攻击', '技能', '交互', '拾取'], default: '攻击' },
-      { 
-        name: '目标黑板键', 
-        key: 'targetKey', 
+      {
+        name: '目标黑板键',
+        key: 'targetKey',
         type: 'string',
         default: 'Target',
         visible: (params) => params.actionType === '攻击'
       },
-      { 
-        name: '攻击范围', 
-        key: 'attackRange', 
+      {
+        name: '攻击范围',
+        key: 'attackRange',
         type: 'number',
         default: 2.0,
         visible: (params) => params.actionType === '攻击'
       },
-      { 
-        name: '技能名称', 
-        key: 'skillName', 
+      {
+        name: '技能名称',
+        key: 'skillName',
         type: 'string',
         default: '',
         visible: (params) => params.actionType === '技能'
       },
-      { 
-        name: '目标黑板键', 
-        key: 'skillTargetKey', 
+      {
+        name: '目标黑板键',
+        key: 'skillTargetKey',
         type: 'string',
         default: '',
         visible: (params) => params.actionType === '技能'
       },
-      { 
-        name: '交互对象键', 
-        key: 'interactKey', 
+      {
+        name: '交互对象键',
+        key: 'interactKey',
         type: 'string',
         default: '',
         visible: (params) => params.actionType === '交互'
       },
-      { 
-        name: '交互类型', 
-        key: 'interactType', 
+      {
+        name: '交互类型',
+        key: 'interactType',
         type: 'string',
         default: '使用',
         visible: (params) => params.actionType === '交互'
       },
-      { 
-        name: '物品黑板键', 
-        key: 'itemKey', 
+      {
+        name: '物品黑板键',
+        key: 'itemKey',
         type: 'string',
         default: '',
         visible: (params) => params.actionType === '拾取'
       },
-      { 
-        name: '拾取范围', 
-        key: 'pickupRange', 
+      {
+        name: '拾取范围',
+        key: 'pickupRange',
         type: 'number',
         default: 1.5,
         visible: (params) => params.actionType === '拾取'
@@ -716,7 +716,7 @@ export const NodeData = {
     color: '#00B42A',
     customClass: 'node-action'
   },
-  
+
   // 添加服务节点数据定义
   [NodeTypes.PARALLEL]: {
     name: '完整平行',
@@ -732,7 +732,7 @@ export const NodeData = {
     color: '#86909C',
     customClass: 'node-service'
   },
-  
+
   [NodeTypes.BLACKBOARD_MONITOR]: {
     name: '黑板监控服务',
     category: NodeCategories.SERVICE,
@@ -748,7 +748,7 @@ export const NodeData = {
     color: '#86909C',
     customClass: 'node-service'
   },
-  
+
   [NodeTypes.DISTANCE_CHECK]: {
     name: '距离检查服务',
     category: NodeCategories.SERVICE,
@@ -765,7 +765,7 @@ export const NodeData = {
     color: '#86909C',
     customClass: 'node-service'
   },
-  
+
   [NodeTypes.LINE_OF_SIGHT]: {
     name: '视线检查服务',
     category: NodeCategories.SERVICE,
@@ -783,7 +783,7 @@ export const NodeData = {
     color: '#86909C',
     customClass: 'node-service'
   },
-  
+
   [NodeTypes.PATROL]: {
     name: '巡逻服务',
     category: NodeCategories.SERVICE,
@@ -801,7 +801,7 @@ export const NodeData = {
     color: '#86909C',
     customClass: 'node-service'
   },
-  
+
   [NodeTypes.STATE_UPDATE]: {
     name: '状态更新服务',
     category: NodeCategories.SERVICE,
@@ -819,7 +819,7 @@ export const NodeData = {
     color: '#86909C',
     customClass: 'node-service'
   },
-  
+
   [NodeTypes.RANDOM_VALUE]: {
     name: '随机值服务',
     category: NodeCategories.SERVICE,
@@ -837,7 +837,7 @@ export const NodeData = {
     color: '#86909C',
     customClass: 'node-service'
   },
-  
+
   // 添加Subgraph节点定义
   [NodeTypes.SUBGRAPH]: {
     name: '子图',
@@ -867,8 +867,8 @@ export const NodeGroups = [
   {
     title: '装饰器节点',
     nodes: [
-      NodeTypes.INVERTER, 
-      NodeTypes.FORCE_SUCCESS, 
+      NodeTypes.INVERTER,
+      NodeTypes.FORCE_SUCCESS,
       NodeTypes.FORCE_FAILURE,
       NodeTypes.REPEAT,
       NodeTypes.COOLDOWN,
@@ -879,8 +879,8 @@ export const NodeGroups = [
   {
     title: '叶节点',
     nodes: [
-      NodeTypes.WAIT, 
-      NodeTypes.PRINT_STRING, 
+      NodeTypes.WAIT,
+      NodeTypes.PRINT_STRING,
       NodeTypes.SET_BLACKBOARD_VALUE,
       NodeTypes.GET_BLACKBOARD_VALUE,
       NodeTypes.MOVE_TO,
@@ -921,4 +921,4 @@ export const getCategoryClass = (type) => {
 export const getNodeColor = (type) => {
   const nodeInfo = getNodeInfo(type);
   return nodeInfo ? nodeInfo.color || '#86909C' : '#86909C';
-}; 
+};
