@@ -459,6 +459,7 @@ const RenderEnhancedHandles = memo(({nodeType, onPortHover, settings}) => {
 
     // 根据节点类型判断连接点布局
     switch (nodeType) {
+        case 'basic':
         case 'RootNode':
             return renderEnhancedHandle('source', Position.Bottom, 'children', '起始');
 
