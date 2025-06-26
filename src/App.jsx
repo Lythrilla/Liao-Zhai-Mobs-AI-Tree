@@ -52,6 +52,128 @@ const EditorApp = () => {
 
   const navigate = useNavigate();
 
+  // 添加到历史记录
+  const addToHistory = useCallback((nodes, edges) => {
+    // 如果节点为空，不添加历史记录
+    if (!nodes || nodes.length === 0) {
+      return;
+    }
+
+    // 创建当前状态的深拷贝
+    const currentState = {
+      nodes: JSON.parse(JSON.stringify(nodes)),
+      edges: JSON.parse(JSON.stringify(edges || []))
+    };
+
+    // 如果历史记录为空，直接添加
+    if (history.length === 0) {
+      setHistory([currentState]);
+      setHistoryIndex(0);
+      setCanUndo(false);
+      setCanRedo(false);
+      return;
+    }
+
+    // 如果我们在历史记录中间进行了编辑，则删除当前索引之后的所有历史
+    const newHistory = history.slice(0, historyIndex + 1);
+
+    // 检查是否与最后一个历史状态相同（避免重复添加相同状态）
+    const lastState = newHistory[newHistory.length - 1];
+    if (lastState &&
+        JSON.stringify(lastState.nodes) === JSON.stringify(currentState.nodes) &&
+        JSON.stringify(lastState.edges) === JSON.stringify(currentState.edges)) {
+      return; // 状态相同，不添加
+    }
+
+    // 添加新状态到历史
+    newHistory.push(currentState);
+
+    // 更新历史记录和索引
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+
+    // 更新撤销/重做按钮状态
+    setCanUndo(newHistory.length > 1);
+    setCanRedo(false);
+  }, [history, historyIndex]);
+
+  // 更新节点参数
+  const updateNodeParams = useCallback((nodeId, params, updatedData = null) => {
+    if (canvasRef.current) {
+      // 创建新的data对象，确保React能检测到变化
+      let newData;
+      if (updatedData) {
+        // 如果提供了完整的更新数据，直接使用
+        newData = {
+          ...updatedData,
+          params: { ...params }
+        };
+      } else {
+        // 获取当前节点数据
+        const currentNode = canvasRef.current.getNodes().find(n => n.id === nodeId);
+        if (currentNode) {
+          // 否则只更新参数
+          newData = {
+            ...currentNode.data,
+            params: { ...params }
+          };
+        } else {
+          return; // 节点不存在
+        }
+      }
+
+      // 使用新方法更新节点数据
+      canvasRef.current.updateNodeData(nodeId, newData);
+      
+      // 获取更新后的节点
+      const allNodes = canvasRef.current.getNodes();
+      const updatedNode = allNodes.find(n => n.id === nodeId);
+      
+      // 如果更新的是当前选中的节点，更新选中节点状态
+      if (selectedNode && selectedNode.id === nodeId) {
+        if (updatedNode) {
+          setSelectedNode(updatedNode);
+        }
+      }
+
+      // 添加到历史记录
+      addToHistory(allNodes, canvasRef.current.getEdges());
+    }
+  }, [selectedNode, addToHistory]);
+
+  // 添加自定义事件监听器，处理节点参数变更
+  useEffect(() => {
+    const handleNodeParamChanged = (event) => {
+      const { nodeId, params, paramKey, paramValue } = event.detail;
+      
+      // 如果有完整的参数对象，直接使用
+      if (params) {
+        updateNodeParams(nodeId, params);
+      } 
+      // 否则尝试更新单个参数
+      else if (nodeId && paramValue !== undefined) {
+        // 获取当前节点
+        const currentNode = canvasRef.current.getNodes().find(n => n.id === nodeId);
+        if (currentNode && currentNode.data && currentNode.data.params) {
+          const updatedParams = {
+            ...currentNode.data.params,
+            // 如果有paramKey使用它，否则尝试猜测
+            ...(paramKey ? { [paramKey]: paramValue } : {})
+          };
+          updateNodeParams(nodeId, updatedParams);
+        }
+      }
+    };
+
+    // 添加事件监听器
+    document.addEventListener('bt:node:param:changed', handleNodeParamChanged);
+    
+    // 清理函数
+    return () => {
+      document.removeEventListener('bt:node:param:changed', handleNodeParamChanged);
+    };
+  }, [updateNodeParams, canvasRef]);
+
   // 初始化历史记录
   const initializeHistory = useCallback(() => {
     if (canvasRef.current) {
@@ -69,6 +191,12 @@ const EditorApp = () => {
       }
     }
   }, [canvasRef]);
+
+  // 初始化历史记录
+  useEffect(() => {
+    const timer = setTimeout(initializeHistory, 100);
+    return () => clearTimeout(timer);
+  }, [initializeHistory]);
 
   // 新建行为树
   const handleNew = useCallback(() => {
@@ -123,12 +251,6 @@ const EditorApp = () => {
       }
     }
   }, [history, canvasRef]);
-
-  // 初始化历史记录
-  useEffect(() => {
-    const timer = setTimeout(initializeHistory, 100);
-    return () => clearTimeout(timer);
-  }, [initializeHistory]);
 
   // 检查是否有通过IPC加载的文件
   useEffect(() => {
@@ -209,116 +331,39 @@ const EditorApp = () => {
 
     // 更新选中节点列表
     if (nodes && nodes.length > 0) {
-      setSelectedNodes(nodes);
+      // 查找最新节点数据，确保我们有最新状态
+      const latestNodes = canvasRef.current ? canvasRef.current.getNodes() : [];
+      const updatedNodes = nodes.map(node => {
+        // 找到对应的最新节点数据
+        const latestNode = latestNodes.find(n => n.id === node.id);
+        return latestNode || node;
+      });
+      
+      setSelectedNodes(updatedNodes);
 
       // 如果只选择了一个节点，也更新selectedNode
-      if (nodes.length === 1) {
-        setSelectedNode(nodes[0]);
-      } else if (nodes.length > 1) {
+      if (updatedNodes.length === 1) {
+        setSelectedNode(updatedNodes[0]);
+      } else if (updatedNodes.length > 1) {
         // 多选状态下，保持最后选中的节点作为主选中节点
         // 如果之前没有选择节点，则使用第一个作为主选中节点
-        if (!selectedNode || !nodes.some(n => n.id === selectedNode.id)) {
-          setSelectedNode(nodes[0]);
+        if (!selectedNode || !updatedNodes.some(n => n.id === selectedNode.id)) {
+          setSelectedNode(updatedNodes[0]);
+        } else if (selectedNode) {
+          // 更新当前选中节点的最新数据
+          const latestSelectedNode = updatedNodes.find(n => n.id === selectedNode.id);
+          if (latestSelectedNode && latestSelectedNode !== selectedNode) {
+            setSelectedNode(latestSelectedNode);
+          }
         }
-        console.log(`已选中${nodes.length}个节点`);
+        console.log(`已选中${updatedNodes.length}个节点`);
       }
     } else {
       // 如果没有选中的节点，清空列表
       setSelectedNodes([]);
       setSelectedNode(null);
     }
-  }, [selectedNode]);
-
-  // 添加到历史记录 - 确保在updateNodeParams之前定义
-  const addToHistory = useCallback((nodes, edges) => {
-    // 如果节点为空，不添加历史记录
-    if (!nodes || nodes.length === 0) {
-      return;
-    }
-
-    // 创建当前状态的深拷贝
-    const currentState = {
-      nodes: JSON.parse(JSON.stringify(nodes)),
-      edges: JSON.parse(JSON.stringify(edges || []))
-    };
-
-    // 如果历史记录为空，直接添加
-    if (history.length === 0) {
-      setHistory([currentState]);
-      setHistoryIndex(0);
-      setCanUndo(false);
-      setCanRedo(false);
-      return;
-    }
-
-    // 如果我们在历史记录中间进行了编辑，则删除当前索引之后的所有历史
-    const newHistory = history.slice(0, historyIndex + 1);
-
-    // 检查是否与最后一个历史状态相同（避免重复添加相同状态）
-    const lastState = newHistory[newHistory.length - 1];
-    if (lastState &&
-        JSON.stringify(lastState.nodes) === JSON.stringify(currentState.nodes) &&
-        JSON.stringify(lastState.edges) === JSON.stringify(currentState.edges)) {
-      return; // 状态相同，不添加
-    }
-
-    // 添加新状态到历史
-    newHistory.push(currentState);
-
-    // 更新历史记录和索引
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
-
-    // 更新撤销/重做按钮状态
-    setCanUndo(newHistory.length > 1);
-    setCanRedo(false);
-  }, [history, historyIndex]);
-
-  // 更新节点参数
-  const updateNodeParams = useCallback((nodeId, params, updatedData = null) => {
-    if (canvasRef.current) {
-      const nodes = canvasRef.current.getNodes();
-      const updatedNodes = nodes.map(node => {
-        if (node.id === nodeId) {
-          // 创建新的data对象，确保React能检测到变化
-          let newData;
-          if (updatedData) {
-            // 如果提供了完整的更新数据，直接使用
-            newData = {
-              ...updatedData,
-              params: { ...params }
-            };
-          } else {
-            // 否则只更新参数
-            newData = {
-              ...node.data,
-              params: { ...params }
-            };
-          }
-
-          return {
-            ...node,
-            data: newData
-          };
-        }
-        return node;
-      });
-
-      // 更新节点
-      canvasRef.current.setNodes(updatedNodes);
-
-      // 如果更新的是当前选中的节点，更新选中节点状态
-      if (selectedNode && selectedNode.id === nodeId) {
-        const updatedSelectedNode = updatedNodes.find(node => node.id === nodeId);
-        if (updatedSelectedNode) {
-          setSelectedNode(updatedSelectedNode);
-        }
-      }
-
-      // 添加到历史记录
-      addToHistory(updatedNodes, canvasRef.current.getEdges());
-    }
-  }, [selectedNode, addToHistory]);
+  }, [selectedNode, canvasRef]);
 
   // 更新节点参数
   const handleCanvasChange = useCallback(() => {

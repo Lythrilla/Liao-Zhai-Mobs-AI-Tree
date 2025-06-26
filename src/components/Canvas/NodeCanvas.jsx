@@ -467,6 +467,18 @@ const NodeCanvas = forwardRef(({
         nodes: exportNodes,
         edges: edges
       }, null, 2);
+    },
+    
+    // 新增：更新单个节点数据并触发重新渲染
+    updateNodeData: (nodeId, updatedData) => {
+      setNodes(currentNodes => 
+        currentNodes.map(node => 
+          node.id === nodeId 
+            ? { ...node, data: { ...node.data, ...updatedData } } 
+            : node
+        )
+      );
+      return true;
     }
   }));
 

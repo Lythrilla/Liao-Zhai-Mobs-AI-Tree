@@ -1,4 +1,4 @@
-import React, {memo, useEffect, useRef, useState} from 'react';
+import React, {memo, useEffect, useRef, useState, useCallback} from 'react';
 import {Handle, Position, useUpdateNodeInternals} from '@xyflow/react';
 import {getNodeColor, getNodeInfo, convertParamValue, convertParamDisplayValue} from '../../utils/nodeTypes';
 
@@ -24,6 +24,174 @@ const PortLabel = ({text, position, left, visible, alwaysShow}) => {
 
     return (
         <div style={style}>{text}</div>
+    );
+};
+
+// 自定义数字输入框组件
+const CustomNumberInput = ({ value, onChange, onBlur, onKeyDown, paramDef }) => {
+    const [inputValue, setInputValue] = useState(value);
+    
+    // 处理输入变化
+    const handleInputChange = (e) => {
+        setInputValue(e.target.value);
+        onChange(e);
+    };
+    
+    // 直接更新节点数据的函数
+    const updateNodeData = (newValue) => {
+        // 应用范围限制
+        let finalValue = newValue;
+        if (paramDef?.min !== undefined && finalValue < paramDef.min) {
+            finalValue = paramDef.min;
+        }
+        if (paramDef?.max !== undefined && finalValue > paramDef.max) {
+            finalValue = paramDef.max;
+        }
+        
+        // 更新输入框值
+        setInputValue(String(finalValue));
+        
+        // 更新节点数据
+        onChange({ target: { value: String(finalValue) } });
+        onBlur({ target: { value: String(finalValue) } });
+        
+        // 获取当前节点ID
+        const nodeElement = document.activeElement.closest('.bt-node');
+        if (nodeElement) {
+            const nodeId = nodeElement.getAttribute('data-id') || nodeElement.id;
+            if (nodeId) {
+                // 触发自定义事件，通知App组件参数已更改
+                const event = new CustomEvent('bt:node:param:changed', {
+                    detail: {
+                        nodeId: nodeId,
+                        paramValue: finalValue
+                    }
+                });
+                document.dispatchEvent(event);
+            }
+        }
+    };
+    
+    // 增加值
+    const handleIncrement = () => {
+        const step = paramDef?.step || 1;
+        const newValue = parseFloat(inputValue) + step;
+        updateNodeData(newValue);
+    };
+    
+    // 减少值
+    const handleDecrement = () => {
+        const step = paramDef?.step || 1;
+        const newValue = parseFloat(inputValue) - step;
+        updateNodeData(newValue);
+    };
+    
+    // 同步外部值
+    useEffect(() => {
+        if (value !== inputValue) {
+            setInputValue(value);
+        }
+    }, [value]);
+    
+    return (
+        <div style={{ 
+            display: 'flex', 
+            position: 'relative',
+            width: '80px',
+        }}>
+            <input
+                className="param-edit"
+                type="text"
+                value={inputValue}
+                onChange={handleInputChange}
+                onBlur={onBlur}
+                onKeyDown={onKeyDown}
+                autoFocus
+                style={{
+                    width: '100%',
+                    padding: '1px 4px',
+                    paddingRight: '18px',
+                    fontSize: '12px',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '3px'
+                }}
+                onClick={(e) => e.stopPropagation()}
+            />
+            <div style={{
+                position: 'absolute',
+                right: '1px',
+                top: '1px',
+                bottom: '1px',
+                width: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                borderLeft: '1px solid var(--border-color)',
+                zIndex: 10,
+                borderTopRightRadius: '2px',
+                borderBottomRightRadius: '2px',
+                overflow: 'hidden'
+            }}>
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleIncrement();
+                    }}
+                    style={{
+                        border: 'none',
+                        outline: 'none',
+                        background: '#f7f7f7',
+                        padding: 0,
+                        margin: 0,
+                        height: '50%',
+                        width: '100%',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '9px',
+                        color: 'var(--text-secondary)',
+                        borderBottom: '1px solid var(--border-color)',
+                        transition: 'all 0.1s ease',
+                        userSelect: 'none'
+                    }}
+                >
+                    <svg width="8" height="4" viewBox="0 0 8 4" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 0L8 4H0L4 0Z" fill="currentColor"/>
+                    </svg>
+                </button>
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDecrement();
+                    }}
+                    style={{
+                        border: 'none',
+                        outline: 'none',
+                        background: '#f7f7f7',
+                        padding: 0,
+                        margin: 0,
+                        height: '50%',
+                        width: '100%',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '9px',
+                        color: 'var(--text-secondary)',
+                        transition: 'all 0.1s ease',
+                        userSelect: 'none'
+                    }}
+                >
+                    <svg width="8" height="4" viewBox="0 0 8 4" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 4L0 0H8L4 4Z" fill="currentColor"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
     );
 };
 
@@ -113,7 +281,7 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
         setHoveredPort(isHovered ? portId : null);
     };
 
-    // 单击参数编辑，下拉框和布尔值可以直接点击切换
+    // 单击参数编辑，仅处理下拉框
     const handleParamClick = (e, key, value, paramDef) => {
         e.stopPropagation();
 
@@ -123,18 +291,9 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
             setShowDropdown(true);
             return;
         }
-
-        // 检查参数是否为布尔类型
-        if (paramDef?.type === 'boolean' || typeof value === 'boolean') {
-            // 直接切换布尔值
-            data.params = {
-                ...params,
-                [key]: !value
-            };
-            // 强制更新节点内部状态
-            updateNodeInternals(id);
-        }
-    }
+        
+        // 移除布尔值直接切换的功能
+    };
 
     // 双击参数编辑
     const handleParamDoubleClick = (e, key, value, paramDef) => {
@@ -156,6 +315,7 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
             };
             // 强制更新节点内部状态
             updateNodeInternals(id);
+            
             return;
         }
 
@@ -200,6 +360,17 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
 
             // 强制更新节点内部状态
             updateNodeInternals(id);
+            
+            // 触发自定义事件，通知App组件参数已更改
+            const event = new CustomEvent('bt:node:param:changed', {
+                detail: {
+                    nodeId: id,
+                    params: data.params,
+                    paramKey: editingParam,
+                    paramValue: newValue
+                }
+            });
+            document.dispatchEvent(event);
         }
 
         setEditingParam(null);
@@ -413,18 +584,23 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
                                                     ))}
                                                 </div>
                                             )
+                                        ) : paramDef.type === 'number' ? (
+                                            <CustomNumberInput
+                                                value={editParamValue}
+                                                onChange={(e) => setEditParamValue(e.target.value)}
+                                                onBlur={handleParamEditComplete}
+                                                onKeyDown={handleParamKeyDown}
+                                                paramDef={paramDef}
+                                            />
                                         ) : (
                                             <input
                                                 className="param-edit"
-                                                type={paramDef.type === 'number' ? 'number' : 'text'}
+                                                type="text"
                                                 value={editParamValue}
                                                 onChange={(e) => setEditParamValue(e.target.value)}
                                                 onBlur={handleParamEditComplete}
                                                 onKeyDown={handleParamKeyDown}
                                                 autoFocus
-                                                min={paramDef.min}
-                                                max={paramDef.max}
-                                                step={paramDef.step}
                                                 style={{
                                                     width: '80px',
                                                     padding: '1px 4px',
