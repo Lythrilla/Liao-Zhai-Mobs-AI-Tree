@@ -7,32 +7,44 @@
   "main": "public/electron.js",
   "homepage": "./",
   "scripts": {
-    "start": "set PORT=3001 && react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
+    "start": "react-app-rewired start",
+    "build": "react-app-rewired build",
+    "test": "react-app-rewired test",
     "eject": "react-scripts eject",
     "electron:dev": "electron .",
-    "electron:start": "concurrently \"npm start\" \"wait-on http://localhost:3001 && npm run electron:dev\"",
+    "electron:start": "concurrently \"cross-env PORT=3001 npm start\" \"wait-on http://localhost:3001 && npm run electron:dev\"",
+    "predist": "npm run build",
     "dist": "electron-builder",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "@electron/remote": "^2.1.2",
-    "@mui/material": "^5.15.5",
-    "@mui/icons-material": "^5.15.5",
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
-    "electron-is-dev": "^2.0.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "@mui/icons-material": "^5.15.5",
+    "@mui/material": "^5.15.5",
     "@xyflow/react": "^12.7.1",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.1",
+    "electron-is-dev": "^2.0.0",
+    "electron-log": "^5.4.1",
+    "electron-updater": "^6.6.2",
+    "os-browserify": "^0.3.0",
+    "path-browserify": "^1.0.1",
+    "process": "^0.11.10",
+    "react": "^18.2.0",
+    "react-app-rewired": "^2.2.1",
+    "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.3",
     "react-scripts": "5.0.1",
+    "stream-browserify": "^3.0.0",
     "styled-components": "^6.1.8",
+    "util": "^0.12.5",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
     "electron": "^37.1.0",
     "electron-builder": "^26.0.12",
     "eslint-config-react-app": "^7.0.1",
@@ -45,7 +57,21 @@
       "category": "public.app-category.developer-tools"
     },
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/icons/icon.ico"
     },
     "linux": {
       "target": "AppImage"
@@ -60,7 +86,19 @@
     },
     "extraMetadata": {
       "main": "public/electron.js"
-    }
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "extraResources": [
+      {
+        "from": "resources/",
+        "to": "resources/"
+      }
+    ]
   },
   "browserslist": {
     "production": [
