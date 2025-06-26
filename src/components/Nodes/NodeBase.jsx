@@ -1,5 +1,5 @@
 import React, {memo, useEffect, useRef, useState} from 'react';
-import {Handle, Position, useUpdateNodeInternals} from 'react-flow-renderer';
+import {Handle, Position, useUpdateNodeInternals} from '@xyflow/react';
 import {getNodeColor, getNodeInfo} from '../../utils/nodeTypes';
 
 // 带悬停效果的连接点标签组件
