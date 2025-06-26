@@ -5,6 +5,7 @@ const FilePreview = ({ file, onOpenEditor }) => {
   const [parsedJson, setParsedJson] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isJsonView, setIsJsonView] = useState(true); // 切换JSON视图和原始视图
   
   useEffect(() => {
     if (!file) return;
@@ -63,7 +64,27 @@ const FilePreview = ({ file, onOpenEditor }) => {
   const formatDate = (dateString) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleString();
+      const now = new Date();
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      
+      // 如果是今天
+      if (date.toDateString() === now.toDateString()) {
+        return `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+      }
+      
+      // 如果是昨天
+      if (date.toDateString() === yesterday.toDateString()) {
+        return `昨天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+      }
+      
+      // 今年内的日期
+      if (date.getFullYear() === now.getFullYear()) {
+        return `${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+      }
+      
+      // 其他日期
+      return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
     } catch (error) {
       return '未知时间';
     }
@@ -165,6 +186,11 @@ const FilePreview = ({ file, onOpenEditor }) => {
   // 获取行为树信息
   const behaviorTreeInfo = isBehaviorTree(parsedJson) ? getBehaviorTreeInfo(parsedJson) : null;
   
+  // 文件类型和颜色
+  const isJsonFile = file.name.endsWith('.json');
+  const iconColor = isJsonFile ? '#722ED1' : '#5b8c00';
+  const bgColor = isJsonFile ? '#f3f0ff' : '#f6ffed';
+  
   return (
     <div style={{ 
       display: 'flex', 
@@ -174,38 +200,39 @@ const FilePreview = ({ file, onOpenEditor }) => {
     }}>
       {/* 文件信息头部 */}
       <div style={{ 
-        padding: '12px 0',
+        padding: '0 0 16px 0',
         borderBottom: '1px solid #f0f0f0',
         marginBottom: '16px'
       }}>
         <div style={{ 
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
-          marginBottom: '12px'
+          gap: '16px',
+          marginBottom: '16px'
         }}>
           {/* 文件图标 */}
           <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '8px',
-            background: '#f0f0ff',
+            width: '48px',
+            height: '48px',
+            borderRadius: '10px',
+            background: bgColor,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#722ED1'
+            color: iconColor,
+            flexShrink: 0
           }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M14 2v6h6M16 13H8M16 17H8" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M14 2v6h6M9 16s.5-1 2-1 2.5 1 4 1 2-1 2-1" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
           
           {/* 文件名和路径 */}
           <div style={{ flex: 1, overflow: 'hidden' }}>
-            <h3 style={{ 
+            <h2 style={{ 
               margin: 0, 
-              fontSize: '16px',
+              fontSize: '18px',
               fontWeight: 600,
               color: '#333',
               whiteSpace: 'nowrap',
@@ -213,214 +240,321 @@ const FilePreview = ({ file, onOpenEditor }) => {
               textOverflow: 'ellipsis'
             }}>
               {file.name}
-            </h3>
-            <p style={{ 
-              margin: '4px 0 0 0',
-              fontSize: '13px',
-              color: '#666',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }}>
-              {file.path}
-            </p>
-          </div>
-        </div>
-        
-        {/* 文件详细信息 */}
-        <div style={{
-          display: 'flex',
-          gap: '16px',
-          fontSize: '13px',
-          color: '#666',
-          flexWrap: 'wrap'
-        }}>
-          <div>
-            <span style={{ color: '#999' }}>大小:</span> {formatFileSize(file.size || 0)}
-          </div>
-          <div>
-            <span style={{ color: '#999' }}>修改时间:</span> {formatDate(file.lastModified)}
-          </div>
-          {file.created && (
-            <div>
-              <span style={{ color: '#999' }}>创建时间:</span> {formatDate(file.created)}
-            </div>
-          )}
-        </div>
-        
-        {/* 行为树信息 */}
-        {behaviorTreeInfo && (
-          <div style={{
-            marginTop: '12px',
-            padding: '12px',
-            background: '#f9f9ff',
-            borderRadius: '6px',
-            border: '1px solid #e6e6ff'
-          }}>
-            <h4 style={{ 
-              margin: '0 0 8px 0', 
-              fontSize: '14px',
-              fontWeight: 600,
-              color: '#722ED1'
-            }}>
-              行为树信息
-            </h4>
+            </h2>
             <div style={{
               display: 'flex',
-              flexWrap: 'wrap',
-              gap: '12px',
-              fontSize: '13px'
+              alignItems: 'center',
+              gap: '8px',
+              marginTop: '6px'
             }}>
-              <div>
-                <span style={{ color: '#999' }}>节点数量:</span> {behaviorTreeInfo.nodeCount}
-              </div>
-              {behaviorTreeInfo.maxDepth > 0 && (
-                <div>
-                  <span style={{ color: '#999' }}>最大深度:</span> {behaviorTreeInfo.maxDepth}
-                </div>
-              )}
-              {behaviorTreeInfo.rootNodeId && (
-                <div>
-                  <span style={{ color: '#999' }}>根节点ID:</span> {behaviorTreeInfo.rootNodeId}
-                </div>
-              )}
+              <span style={{
+                backgroundColor: bgColor,
+                color: iconColor,
+                padding: '2px 6px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                fontWeight: '500',
+                textTransform: 'uppercase'
+              }}>
+                {file.name.split('.').pop()}
+              </span>
+              <span style={{ 
+                fontSize: '13px',
+                color: '#999',
+              }}>
+                {formatFileSize(file.size || 0)}
+              </span>
+              <span style={{ 
+                fontSize: '13px',
+                color: '#999',
+              }}>
+                {formatDate(file.lastModified)}
+              </span>
+            </div>
+          </div>
+          
+          {/* 操作按钮 */}
+          <button
+            onClick={handleOpenInEditor}
+            style={{
+              padding: '8px 16px',
+              background: '#722ED1',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s',
+              flexShrink: 0
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#5b25a8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#722ED1';
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            在编辑器中打开
+          </button>
+        </div>
+        
+        {/* 文件路径 */}
+        <div style={{
+          padding: '8px 12px',
+          backgroundColor: '#f9f9f9',
+          borderRadius: '6px',
+          fontSize: '13px',
+          color: '#666',
+          wordBreak: 'break-all',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          lineHeight: '1.4'
+        }}>
+          {file.path}
+        </div>
+      </div>
+      
+      {/* 行为树信息卡片 */}
+      {behaviorTreeInfo && (
+        <div style={{
+          marginBottom: '16px',
+          background: '#f9f9fb',
+          borderRadius: '10px',
+          padding: '16px',
+          border: '1px solid #eee'
+        }}>
+          <h3 style={{
+            margin: '0 0 12px 0',
+            fontSize: '16px',
+            fontWeight: 600,
+            color: '#333',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#722ED1" strokeWidth="2">
+              <path d="M12 3v18M5.5 5.5h13M5.5 12h13M5.5 18.5h13" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            行为树信息
+          </h3>
+          
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+            gap: '12px'
+          }}>
+            <div style={{
+              padding: '10px',
+              borderRadius: '8px',
+              background: '#fff',
+              border: '1px solid #f0f0f0'
+            }}>
+              <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>节点数量</div>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: '#333' }}>{behaviorTreeInfo.nodeCount}</div>
             </div>
             
-            {/* 节点类型统计 */}
-            {Object.keys(behaviorTreeInfo.nodeTypes).length > 0 && (
-              <div style={{ marginTop: '8px' }}>
-                <div style={{ fontSize: '13px', color: '#999', marginBottom: '4px' }}>节点类型:</div>
+            <div style={{
+              padding: '10px',
+              borderRadius: '8px',
+              background: '#fff',
+              border: '1px solid #f0f0f0'
+            }}>
+              <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>树的深度</div>
+              <div style={{ fontSize: '16px', fontWeight: 600, color: '#333' }}>{behaviorTreeInfo.maxDepth || '未知'}</div>
+            </div>
+            
+            {behaviorTreeInfo.rootNodeId && (
+              <div style={{
+                padding: '10px',
+                borderRadius: '8px',
+                background: '#fff',
+                border: '1px solid #f0f0f0'
+              }}>
+                <div style={{ fontSize: '13px', color: '#666', marginBottom: '4px' }}>根节点ID</div>
                 <div style={{ 
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '8px',
-                  fontSize: '12px'
+                  fontSize: '14px', 
+                  fontWeight: 500, 
+                  color: '#333',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
                 }}>
-                  {Object.entries(behaviorTreeInfo.nodeTypes).map(([type, count]) => (
-                    <div key={type} style={{
-                      padding: '2px 8px',
-                      background: '#eeeeff',
-                      borderRadius: '12px',
-                      color: '#722ED1'
-                    }}>
-                      {type}: {count}
-                    </div>
-                  ))}
+                  {behaviorTreeInfo.rootNodeId}
                 </div>
               </div>
             )}
           </div>
-        )}
-      </div>
+          
+          {/* 节点类型统计 */}
+          {Object.keys(behaviorTreeInfo.nodeTypes).length > 0 && (
+            <div style={{ marginTop: '16px' }}>
+              <h4 style={{ 
+                margin: '0 0 10px 0',
+                fontSize: '14px',
+                fontWeight: 600,
+                color: '#333'
+              }}>
+                节点类型统计
+              </h4>
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '8px'
+              }}>
+                {Object.entries(behaviorTreeInfo.nodeTypes).map(([type, count]) => (
+                  <div 
+                    key={type}
+                    style={{
+                      padding: '4px 10px',
+                      background: '#f0f0ff',
+                      color: '#722ED1',
+                      borderRadius: '4px',
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <span style={{ fontWeight: 500 }}>{type}</span>
+                    <span style={{ 
+                      background: '#722ED1',
+                      color: '#fff',
+                      height: '18px',
+                      minWidth: '18px',
+                      borderRadius: '9px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      padding: '0 4px'
+                    }}>
+                      {count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       
-      {/* 文件内容预览 */}
-      <div style={{ flex: 1, overflow: 'auto' }}>
-        {loading ? (
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            padding: '20px',
-            color: '#999'
-          }}>
-            <span>加载中...</span>
-          </div>
-        ) : error ? (
-          <div style={{ 
-            padding: '16px', 
-            color: '#dc3545',
-            fontSize: '14px',
-            background: '#fff5f5',
-            border: '1px solid #ffeeee',
-            borderRadius: '6px',
-            marginBottom: '16px'
-          }}>
-            {error}
-          </div>
-        ) : (
-          <pre style={{ 
+      {/* 内容预览区域 */}
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {/* 预览控制栏 */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '8px'
+        }}>
+          <h3 style={{
             margin: 0,
-            padding: '16px',
-            background: '#f8f9fa',
-            border: '1px solid #eee',
-            borderRadius: '4px',
-            fontSize: '13px',
-            lineHeight: 1.5,
-            fontFamily: 'Consolas, monospace',
-            overflow: 'auto',
-            color: '#333',
-            whiteSpace: 'pre-wrap'
+            fontSize: '15px',
+            fontWeight: 600,
+            color: '#333'
           }}>
-            {content}
-          </pre>
-        )}
-      </div>
-      
-      {/* 底部操作栏 */}
-      <div style={{
-        marginTop: '16px',
-        display: 'flex',
-        justifyContent: 'flex-end',
-        gap: '12px'
-      }}>
-        <button 
-          onClick={() => {
-            if (file && file.path.endsWith('.json')) {
-              window.electron?.ipcRenderer.invoke('validate-behavior-tree', file.path)
-                .then(result => {
-                  if (result.isValid) {
-                    alert('行为树验证通过！');
-                  } else {
-                    alert(`行为树验证失败: ${result.message}`);
-                  }
-                })
-                .catch(err => {
-                  alert(`验证过程出错: ${err.message}`);
-                });
-            }
-          }}
-          style={{
-            padding: '8px 16px',
-            background: '#fff',
-            border: '1px solid #d9d9d9',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '13px',
-            color: '#333',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = '#722ED1';
-            e.currentTarget.style.color = '#722ED1';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = '#d9d9d9';
-            e.currentTarget.style.color = '#333';
-          }}
-        >
-          验证行为树
-        </button>
+            文件内容预览
+          </h3>
+          
+          {parsedJson && !error && (
+            <div style={{
+              display: 'flex',
+              background: '#f0f2f5',
+              borderRadius: '6px',
+              padding: '2px'
+            }}>
+              <button
+                onClick={() => setIsJsonView(true)}
+                style={{
+                  padding: '4px 10px',
+                  background: isJsonView ? '#fff' : 'transparent',
+                  color: isJsonView ? '#722ED1' : '#666',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  boxShadow: isJsonView ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
+                  transition: 'all 0.2s'
+                }}
+              >
+                格式化视图
+              </button>
+              <button
+                onClick={() => setIsJsonView(false)}
+                style={{
+                  padding: '4px 10px',
+                  background: !isJsonView ? '#fff' : 'transparent',
+                  color: !isJsonView ? '#722ED1' : '#666',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  boxShadow: !isJsonView ? '0 1px 3px rgba(0,0,0,0.05)' : 'none',
+                  transition: 'all 0.2s'
+                }}
+              >
+                原始视图
+              </button>
+            </div>
+          )}
+        </div>
         
-        <button 
-          onClick={handleOpenInEditor}
-          style={{
-            padding: '8px 16px',
-            background: '#722ED1',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '13px',
-            color: '#fff',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#5b25a8';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#722ED1';
-          }}
-        >
-          在编辑器中打开
-        </button>
+        {/* 内容区域 */}
+        <div style={{
+          flex: 1,
+          overflow: 'auto',
+          borderRadius: '8px',
+          border: '1px solid #f0f0f0',
+          background: '#fafafa'
+        }}>
+          {loading ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              color: '#999'
+            }}>
+              <span>加载中...</span>
+            </div>
+          ) : error ? (
+            <div style={{
+              padding: '16px',
+              color: '#ff4d4f',
+              fontSize: '14px'
+            }}>
+              {error}
+            </div>
+          ) : (
+            <pre style={{
+              margin: 0,
+              padding: '16px',
+              fontSize: '14px',
+              fontFamily: 'Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace',
+              lineHeight: 1.5,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              color: '#333',
+              overflow: 'auto',
+              height: '100%'
+            }}>
+              {content}
+            </pre>
+          )}
+        </div>
       </div>
     </div>
   );
