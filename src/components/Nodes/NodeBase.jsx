@@ -1,6 +1,6 @@
 import React, {memo, useEffect, useRef, useState} from 'react';
 import {Handle, Position, useUpdateNodeInternals} from '@xyflow/react';
-import {getNodeColor, getNodeInfo} from '../../utils/nodeTypes';
+import {getNodeColor, getNodeInfo, convertParamValue, convertParamDisplayValue} from '../../utils/nodeTypes';
 
 // 带悬停效果的连接点标签组件
 const PortLabel = ({text, position, left, visible, alwaysShow}) => {
@@ -114,11 +114,10 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
     };
 
     // 单击参数编辑，下拉框和布尔值可以直接点击切换
-    const handleParamClick = (e, key, value) => {
+    const handleParamClick = (e, key, value, paramDef) => {
         e.stopPropagation();
 
         // 检查参数是否为select类型
-        const paramDef = nodeInfo?.params?.find(p => p.key === key);
         if (paramDef?.type === 'select') {
             setEditingParam(key);
             setShowDropdown(true);
@@ -126,7 +125,7 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
         }
 
         // 检查参数是否为布尔类型
-        if (typeof value === 'boolean') {
+        if (paramDef?.type === 'boolean' || typeof value === 'boolean') {
             // 直接切换布尔值
             data.params = {
                 ...params,
@@ -138,11 +137,10 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
     }
 
     // 双击参数编辑
-    const handleParamDoubleClick = (e, key, value) => {
+    const handleParamDoubleClick = (e, key, value, paramDef) => {
         e.stopPropagation();
 
         // 检查参数是否为select类型
-        const paramDef = nodeInfo?.params?.find(p => p.key === key);
         if (paramDef?.type === 'select') {
             setEditingParam(key);
             setShowDropdown(true);
@@ -150,7 +148,7 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
         }
 
         // 检查参数是否为布尔类型
-        if (typeof value === 'boolean') {
+        if (paramDef?.type === 'boolean' || typeof value === 'boolean') {
             // 直接切换布尔值
             data.params = {
                 ...params,
@@ -176,14 +174,22 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
     // 编辑完成 - 参数
     const handleParamEditComplete = () => {
         if (editingParam) {
-            // 根据原参数类型进行转换
-            const originalValue = params?.[editingParam];
+            const paramDef = nodeInfo?.params?.find(p => p.key === editingParam);
             let newValue = editParamValue;
 
-            if (typeof originalValue === 'number') {
+            // 根据参数定义进行类型转换
+            if (paramDef?.type === 'number') {
                 newValue = parseFloat(editParamValue) || 0;
-            } else if (typeof originalValue === 'boolean') {
-                newValue = editParamValue.toLowerCase() === 'true';
+
+                // 应用范围限制
+                if (paramDef.min !== undefined && newValue < paramDef.min) {
+                    newValue = paramDef.min;
+                }
+                if (paramDef.max !== undefined && newValue > paramDef.max) {
+                    newValue = paramDef.max;
+                }
+            } else if (paramDef?.type === 'boolean') {
+                newValue = editParamValue.toLowerCase() === 'true' || editParamValue === '是';
             }
 
             // 更新参数
@@ -201,11 +207,14 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
     };
 
     // 处理下拉选择
-    const handleSelectOption = (option) => {
+    const handleSelectOption = (option, paramDef) => {
         if (editingParam) {
+            // 转换显示值为实际值
+            const actualValue = convertParamValue(paramDef, option);
+
             data.params = {
                 ...params,
-                [editingParam]: option
+                [editingParam]: actualValue
             };
 
             // 强制更新节点内部状态
@@ -244,54 +253,74 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
         };
     }, []);
 
-    // 获取参数的选项（如果是select类型）
-    const getParamOptions = (key) => {
+    // 获取参数的定义
+    const getParamDefinition = (key) => {
         if (nodeInfo && nodeInfo.params) {
-            const paramDef = nodeInfo.params.find(p => p.key === key);
-            return paramDef?.options || [];
+            return nodeInfo.params.find(p => p.key === key);
         }
-        return [];
-    };
-
-    // 判断参数是否为select类型
-    const isSelectParam = (key) => {
-        if (nodeInfo && nodeInfo.params) {
-            const paramDef = nodeInfo.params.find(p => p.key === key);
-            return paramDef?.type === 'select';
-        }
-        return false;
+        return null;
     };
 
     // 判断参数是否应该可见
     const isParamVisible = (key) => {
-        if (nodeInfo && nodeInfo.params) {
-            const paramDef = nodeInfo.params.find(p => p.key === key);
-            if (paramDef?.visible && typeof paramDef.visible === 'function') {
-                return paramDef.visible(params || {});
-            }
+        const paramDef = getParamDefinition(key);
+        if (paramDef?.visible && typeof paramDef.visible === 'function') {
+            return paramDef.visible(params || {});
         }
         return true;
     };
 
-    // 获取节点参数的定义
-    const getParamDefinitions = () => {
-        if (nodeInfo && nodeInfo.params) {
-            return nodeInfo.params;
-        }
-        return [];
-    };
+    // 获取参数的显示值
+    const getParamDisplayValue = (key, value) => {
+        const paramDef = getParamDefinition(key);
 
-    // 过滤显示的参数，只显示应该可见的参数
-    const visibleParams = Object.entries(params || {}).filter(([key]) => isParamVisible(key));
+        // 对于select类型，转换为中文显示
+        if (paramDef?.type === 'select' && paramDef.mapping) {
+            return convertParamDisplayValue(paramDef, value) || value;
+        }
+
+        // 对于布尔类型，显示为是/否
+        if (paramDef?.type === 'boolean' || typeof value === 'boolean') {
+            return value ? '是' : '否';
+        }
+
+        return String(value);
+    };
 
     // 获取参数的显示名称
     const getParamDisplayName = (key) => {
-        if (nodeInfo && nodeInfo.params) {
-            const paramDef = nodeInfo.params.find(p => p.key === key);
-            return paramDef?.name || key;
-        }
-        return key;
+        const paramDef = getParamDefinition(key);
+        return paramDef?.name || key;
     };
+
+    // 获取参数的提示信息
+    const getParamTooltip = (key) => {
+        const paramDef = getParamDefinition(key);
+        return paramDef?.tooltip || '';
+    };
+
+    // 使用参数定义来初始化默认值
+    useEffect(() => {
+        if (nodeInfo && nodeInfo.params) {
+            const defaultParams = {};
+            nodeInfo.params.forEach(paramDef => {
+                if (params[paramDef.key] === undefined && paramDef.default !== undefined) {
+                    defaultParams[paramDef.key] = paramDef.default;
+                }
+            });
+
+            if (Object.keys(defaultParams).length > 0) {
+                data.params = {
+                    ...defaultParams,
+                    ...params
+                };
+                updateNodeInternals(id);
+            }
+        }
+    }, [nodeInfo]);
+
+    // 过滤显示的参数
+    const visibleParams = nodeInfo?.params?.filter(paramDef => isParamVisible(paramDef.key)) || [];
 
     return (
         <div className={`bt-node ${selected ? 'selected' : ''}`}>
@@ -325,9 +354,10 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
                 {/* 显示节点参数 */}
                 {visibleParams.length > 0 && (
                     <div className="node-params" style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
-                        {visibleParams.map(([key, value]) => {
-                            // 跳过权重参数，除非它是唯一的参数
-                            if (key === 'weight' && visibleParams.length > 1) return null;
+                        {visibleParams.map((paramDef) => {
+                            const key = paramDef.key;
+                            const value = params[key] ?? paramDef.default;
+                            const tooltip = getParamTooltip(key);
 
                             return (
                                 <div key={key} className="param-item" style={{
@@ -338,11 +368,14 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
                                     fontSize: '12px',
                                     position: 'relative'
                                 }}>
-                  <span style={{color: 'var(--text-secondary)', fontSize: '11px'}}>
-                    {getParamDisplayName(key)}:
-                  </span>
+                                    <span
+                                        style={{color: 'var(--text-secondary)', fontSize: '11px'}}
+                                        title={tooltip}
+                                    >
+                                        {getParamDisplayName(key)}:
+                                    </span>
                                     {editingParam === key ? (
-                                        isSelectParam(key) ? (
+                                        paramDef.type === 'select' ? (
                                             showDropdown && (
                                                 <div
                                                     ref={dropdownRef}
@@ -361,18 +394,18 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
                                                         overflowY: 'auto'
                                                     }}
                                                 >
-                                                    {getParamOptions(key).map((option) => (
+                                                    {paramDef.options.map((option) => (
                                                         <div
                                                             key={option}
                                                             className="dropdown-option"
-                                                            onClick={() => handleSelectOption(option)}
+                                                            onClick={() => handleSelectOption(option, paramDef)}
                                                             style={{
                                                                 padding: '6px 8px',
                                                                 cursor: 'pointer',
                                                                 fontSize: '12px',
                                                                 borderBottom: '1px solid var(--border-color)',
-                                                                backgroundColor: option === value ? 'var(--bg-secondary)' : 'transparent',
-                                                                fontWeight: option === value ? '500' : 'normal'
+                                                                backgroundColor: getParamDisplayValue(key, value) === option ? 'var(--bg-secondary)' : 'transparent',
+                                                                fontWeight: getParamDisplayValue(key, value) === option ? '500' : 'normal'
                                                             }}
                                                         >
                                                             {option}
@@ -383,12 +416,15 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
                                         ) : (
                                             <input
                                                 className="param-edit"
-                                                type="text"
+                                                type={paramDef.type === 'number' ? 'number' : 'text'}
                                                 value={editParamValue}
                                                 onChange={(e) => setEditParamValue(e.target.value)}
                                                 onBlur={handleParamEditComplete}
                                                 onKeyDown={handleParamKeyDown}
                                                 autoFocus
+                                                min={paramDef.min}
+                                                max={paramDef.max}
+                                                step={paramDef.step}
                                                 style={{
                                                     width: '80px',
                                                     padding: '1px 4px',
@@ -407,11 +443,11 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
                                                 cursor: 'pointer',
                                                 fontSize: '11px'
                                             }}
-                                            onClick={(e) => handleParamClick(e, key, value)}
-                                            onDoubleClick={(e) => handleParamDoubleClick(e, key, value)}
+                                            onClick={(e) => handleParamClick(e, key, value, paramDef)}
+                                            onDoubleClick={(e) => handleParamDoubleClick(e, key, value, paramDef)}
                                         >
-                      {typeof value === 'boolean' ? (value ? '是' : '否') : String(value)}
-                                            {isSelectParam(key) && (
+                                            {getParamDisplayValue(key, value)}
+                                            {paramDef.type === 'select' && (
                                                 <svg
                                                     width="10"
                                                     height="10"
@@ -423,7 +459,7 @@ const NodeBase = ({data, selected, type, id, settings = {}}) => {
                                                     <path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                                 </svg>
                                             )}
-                    </span>
+                                        </span>
                                     )}
                                 </div>
                             );
@@ -460,89 +496,38 @@ const RenderEnhancedHandles = memo(({nodeType, onPortHover, settings}) => {
     // 根据节点类型判断连接点布局
     switch (nodeType) {
         case 'basic':
-        case 'RootNode':
-            return renderEnhancedHandle('source', Position.Bottom, 'children', '起始');
+        case 'root':
+            return renderEnhancedHandle('source', Position.Bottom, 'children', '子节点');
 
-        case 'Selector':
-        case 'Sequence':
+        case 'selector':
+        case 'sequence':
+        case 'parallel':
             return (
                 <>
                     {renderEnhancedHandle('target', Position.Top, 'parent', '父节点')}
                     {renderEnhancedHandle('source', Position.Bottom, 'children', '子节点')}
-                </>
-            );
-
-        case 'SimpleParallel':
-            return (
-                <>
-                    {renderEnhancedHandle('target', Position.Top, 'parent', '父节点')}
-                    {renderEnhancedHandle('source', Position.Bottom, 'primaryTask', '主任务', 30)}
-                    {renderEnhancedHandle('source', Position.Bottom, 'secondaryTask', '次要任务', 70)}
                 </>
             );
 
         // 装饰器节点有一个输入和一个输出
-        case 'Inverter':
-        case 'ForceSuccess':
-        case 'ForceFailure':
-        case 'Repeat':
-        case 'Cooldown':
-        case 'Timeout':
-        case 'Blackboard':
+        case 'inverter':
+        case 'always_succeed':
+        case 'always_fail':
+        case 'repeat':
+        case 'retry':
+        case 'delay':
+        case 'timeout':
+        case 'cooldown':
+        case 'random':
             return (
                 <>
                     {renderEnhancedHandle('target', Position.Top, 'parent', '父节点')}
                     {renderEnhancedHandle('source', Position.Bottom, 'child', '子节点')}
-                </>
-            );
-
-        // 服务节点的连接点布局
-        case 'Parallel':
-            return (
-                <>
-                    {renderEnhancedHandle('target', Position.Top, 'parent', '父节点')}
-                    {renderEnhancedHandle('source', Position.Bottom, 'children', '子节点')}
-                </>
-            );
-
-        case 'BlackboardMonitorService':
-        case 'PatrolService':
-        case 'StateUpdateService':
-        case 'RandomValueService':
-            return (
-                <>
-                    {renderEnhancedHandle('target', Position.Top, 'parent', '父节点')}
-                    {renderEnhancedHandle('source', Position.Bottom, 'child', '子节点')}
-                </>
-            );
-
-        case 'DistanceCheckService':
-            return (
-                <>
-                    {renderEnhancedHandle('target', Position.Top, 'parent', '父节点')}
-                    {renderEnhancedHandle('source', Position.Bottom, 'tooClose', '太近', 25)}
-                    {renderEnhancedHandle('source', Position.Bottom, 'inRange', '适中', 50)}
-                    {renderEnhancedHandle('source', Position.Bottom, 'tooFar', '太远', 75)}
-                </>
-            );
-
-        case 'LineOfSightService':
-            return (
-                <>
-                    {renderEnhancedHandle('target', Position.Top, 'parent', '父节点')}
-                    {renderEnhancedHandle('source', Position.Bottom, 'visible', '可见', 35)}
-                    {renderEnhancedHandle('source', Position.Bottom, 'notVisible', '不可见', 65)}
                 </>
             );
 
         // 叶节点只有输入
-        case 'Wait':
-        case 'PrintString':
-        case 'SetBlackboardValue':
-        case 'GetBlackboardValue':
-        case 'MoveTo':
-        case 'LeaveMoveTo':
-        case 'Rotate':
+        case 'condition':
             return renderEnhancedHandle('target', Position.Top, 'parent', '父节点');
 
         // 默认情况
