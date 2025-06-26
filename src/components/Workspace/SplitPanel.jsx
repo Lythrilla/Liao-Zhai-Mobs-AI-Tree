@@ -29,8 +29,8 @@ const SplitPanel = ({
     // 根据方向计算分割比例
     let newRatio;
     if (direction === 'horizontal') {
-      const containerWidth = containerRect.width;
-      const relativePosition = clientX - containerRect.left;
+    const containerWidth = containerRect.width;
+    const relativePosition = clientX - containerRect.left;
       newRatio = relativePosition / containerWidth;
     } else {
       const containerHeight = containerRect.height;

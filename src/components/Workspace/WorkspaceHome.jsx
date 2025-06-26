@@ -497,135 +497,135 @@ const WorkspaceHome = () => {
           {/* 文件浏览器标签页 */}
           {activeTab === 'explorer' && (
             <>
-              <div style={{
+          <div style={{
                 padding: '14px 16px',
-                borderBottom: '1px solid #f0f0f0',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <h2 style={{
-                  margin: 0,
+            borderBottom: '1px solid #f0f0f0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <h2 style={{
+              margin: 0,
                   fontSize: '16px',
-                  fontWeight: 600,
-                  color: '#333',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
+              fontWeight: 600,
+              color: '#333',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  文件浏览器
-                </h2>
-              </div>
-              
-              {/* 文件浏览器内容 */}
-              <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-                <SplitPanel 
-                  direction="horizontal" 
+                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              文件浏览器
+            </h2>
+          </div>
+          
+          {/* 文件浏览器内容 */}
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+            <SplitPanel 
+              direction="horizontal" 
                   initialRatio={0.3}
                   minRatio={0.2}
                   maxRatio={0.7}
-                >
-                  {/* 左侧文件列表 */}
-                  <div style={{ 
-                    height: '100%',
-                    overflow: 'hidden',
+            >
+              {/* 左侧文件列表 */}
+              <div style={{ 
+                height: '100%',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                borderRight: '1px solid #f0f0f0'
+              }}>
+                <FileExplorer 
+                  currentDirectory={currentDirectory}
+                  onFileSelect={handleFileSelect}
+                  onOpenProject={handleOpenProject}
+                  onFileOpen={handleFileOpen}
+                  selectedFile={selectedFile}
+                />
+              </div>
+              
+              {/* 右侧文件预览 */}
+              <div style={{ 
+                height: '100%',
+                overflow: 'auto',
+                padding: '16px'
+              }}>
+                {selectedFile ? (
+                  <FilePreview 
+                    file={selectedFile} 
+                    onOpenEditor={(filePath) => {
+                      // 确保使用传入的filePath参数
+                      const path = filePath || selectedFile.path;
+                      
+                      if (window.electron && window.electron.ipcRenderer) {
+                        console.log('在编辑器中打开文件:', path);
+                        
+                        // 1. 首先读取文件内容
+                        window.electron.ipcRenderer.invoke('read-file', path)
+                          .then(readResult => {
+                            if (readResult.success) {
+                              try {
+                                // 2. 解析JSON内容
+                                const jsonContent = JSON.parse(readResult.content);
+                                console.log('成功解析文件内容为JSON:', path);
+                                
+                                // 3. 存储到全局变量
+                                window.electron.ipcRenderer.invoke('store-current-file', {
+                                  path: path,
+                                  content: jsonContent
+                                }).then(() => {
+                                  console.log('文件内容已存储到全局变量');
+                                  
+                                  // 4. 添加到最近项目
+                                  window.electron.ipcRenderer.invoke('add-recent-project', {
+                                    path: path,
+                                    name: path.split(/[/\\]/).pop(),
+                                    lastOpened: new Date().toISOString()
+                                  }).then(() => {
+                                    // 5. 导航到编辑器页面
+                                    console.log('导航到编辑器页面');
+                                    navigate('/editor');
+                                  });
+                                });
+                              } catch (jsonError) {
+                                console.error('JSON解析错误:', jsonError);
+                                alert(`JSON解析错误: ${jsonError.message}`);
+                              }
+                            } else {
+                              console.error('读取文件失败:', readResult.error);
+                              alert(`读取文件失败: ${readResult.error}`);
+                            }
+                          })
+                          .catch(error => {
+                            console.error('读取文件出错:', error);
+                            alert(`读取文件出错: ${error.message}`);
+                          });
+                      } else {
+                        navigate('/editor', { state: { filePath: path } });
+                      }
+                    }}
+                  />
+                ) : (
+                  <div style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    borderRight: '1px solid #f0f0f0'
-                  }}>
-                    <FileExplorer 
-                      currentDirectory={currentDirectory}
-                      onFileSelect={handleFileSelect}
-                      onOpenProject={handleOpenProject}
-                      onFileOpen={handleFileOpen}
-                      selectedFile={selectedFile}
-                    />
-                  </div>
-                  
-                  {/* 右侧文件预览 */}
-                  <div style={{ 
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     height: '100%',
-                    overflow: 'auto',
-                    padding: '16px'
+                    color: '#999'
                   }}>
-                    {selectedFile ? (
-                      <FilePreview 
-                        file={selectedFile} 
-                        onOpenEditor={(filePath) => {
-                          // 确保使用传入的filePath参数
-                          const path = filePath || selectedFile.path;
-                          
-                          if (window.electron && window.electron.ipcRenderer) {
-                            console.log('在编辑器中打开文件:', path);
-                            
-                            // 1. 首先读取文件内容
-                            window.electron.ipcRenderer.invoke('read-file', path)
-                              .then(readResult => {
-                                if (readResult.success) {
-                                  try {
-                                    // 2. 解析JSON内容
-                                    const jsonContent = JSON.parse(readResult.content);
-                                    console.log('成功解析文件内容为JSON:', path);
-                                    
-                                    // 3. 存储到全局变量
-                                    window.electron.ipcRenderer.invoke('store-current-file', {
-                                      path: path,
-                                      content: jsonContent
-                                    }).then(() => {
-                                      console.log('文件内容已存储到全局变量');
-                                      
-                                      // 4. 添加到最近项目
-                                      window.electron.ipcRenderer.invoke('add-recent-project', {
-                                        path: path,
-                                        name: path.split(/[/\\]/).pop(),
-                                        lastOpened: new Date().toISOString()
-                                      }).then(() => {
-                                        // 5. 导航到编辑器页面
-                                        console.log('导航到编辑器页面');
-                                        navigate('/editor');
-                                      });
-                                    });
-                                  } catch (jsonError) {
-                                    console.error('JSON解析错误:', jsonError);
-                                    alert(`JSON解析错误: ${jsonError.message}`);
-                                  }
-                                } else {
-                                  console.error('读取文件失败:', readResult.error);
-                                  alert(`读取文件失败: ${readResult.error}`);
-                                }
-                              })
-                              .catch(error => {
-                                console.error('读取文件出错:', error);
-                                alert(`读取文件出错: ${error.message}`);
-                              });
-                          } else {
-                            navigate('/editor', { state: { filePath: path } });
-                          }
-                        }}
-                      />
-                    ) : (
-                      <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: '100%',
-                        color: '#999'
-                      }}>
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '16px', opacity: 0.5 }}>
-                          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M14 2v6h6M16 13H8M16 17H8" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        <p style={{ fontSize: '16px', margin: 0 }}>选择一个JSON文件进行预览</p>
-                        <p style={{ fontSize: '14px', margin: '8px 0 0 0', opacity: 0.7 }}>支持预览行为树JSON文件</p>
-                      </div>
-                    )}
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ marginBottom: '16px', opacity: 0.5 }}>
+                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M14 2v6h6M16 13H8M16 17H8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <p style={{ fontSize: '16px', margin: 0 }}>选择一个JSON文件进行预览</p>
+                    <p style={{ fontSize: '14px', margin: '8px 0 0 0', opacity: 0.7 }}>支持预览行为树JSON文件</p>
                   </div>
-                </SplitPanel>
+                )}
               </div>
+            </SplitPanel>
+          </div>
             </>
           )}
 

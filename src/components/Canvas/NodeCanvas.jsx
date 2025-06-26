@@ -140,7 +140,7 @@ const NodeCanvas = forwardRef(({
       // 当选择发生变化时，将完整的选择结果传递给父组件
       if (onSelectionChange) {
         onSelectionChange({ nodes });
-      }
+    }
     },
     [onSelectionChange]
   );

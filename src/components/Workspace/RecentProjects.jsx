@@ -66,68 +66,68 @@ const RecentProjects = ({ projects, onProjectClick }) => {
         const bgColor = isJsonFile ? '#f3f0ff' : '#f6ffed';
         
         return (
-          <div
-            key={index}
-            onClick={() => onProjectClick(project)}
-            style={{
-              display: 'flex',
+        <div
+          key={index}
+          onClick={() => onProjectClick(project)}
+          style={{
+            display: 'flex',
               flexDirection: 'column',
               padding: '16px',
               borderRadius: '10px',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
               background: '#fff',
               border: '1px solid #f0f0f0',
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
               height: '100%'
-            }}
-            onMouseEnter={(e) => {
+          }}
+          onMouseEnter={(e) => {
               e.currentTarget.style.background = '#fafafa';
               e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
               e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
+          }}
+          onMouseLeave={(e) => {
               e.currentTarget.style.background = '#fff';
               e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.05)';
               e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
+          }}
+        >
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-              <div style={{
+          <div style={{
                 width: '44px',
                 height: '44px',
                 borderRadius: '8px',
                 background: bgColor,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: '12px',
                 color: iconColor,
                 flexShrink: 0
-              }}>
+          }}>
                 {isJsonFile ? (
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeLinecap="round" strokeLinejoin="round"/>
                     <path d="M14 2v6h6M9 16s.5-1 2-1 2.5 1 4 1 2-1 2-1" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 ) : (
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+            </svg>
                 )}
-              </div>
+          </div>
               <div style={{ 
                 flex: 1,
                 overflow: 'hidden'
               }}>
-                <div style={{
+            <div style={{
                   fontSize: '16px',
-                  fontWeight: 500,
-                  color: '#333',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }}>
+              fontWeight: 500,
+              color: '#333',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
                   {fileName}
                 </div>
                 <div style={{
