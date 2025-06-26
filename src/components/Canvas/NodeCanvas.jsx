@@ -1,22 +1,23 @@
 import React, { useState, useCallback, useRef, useImperativeHandle, forwardRef, useMemo } from 'react';
-import ReactFlow, {
+import {
+  ReactFlow,
   MiniMap,
   Controls,
   Background,
   useNodesState,
   useEdgesState,
   addEdge,
-  useReactFlow,
-} from 'react-flow-renderer';
+  useReactFlow
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 import NodeBase from '../Nodes/NodeBase';
 import SubgraphNode from '../Nodes/SubgraphNode';
 import { useDragAndDrop } from '../../hooks/useDragAndDrop';
-import { NodeTypes } from '../../utils/nodeTypes';
 
 // 注册自定义节点
 const nodeTypes = {
   default: NodeBase,
-  RootNode: NodeBase,
+  basic: NodeBase,
   SubgraphNode: SubgraphNode,
   Selector: NodeBase,
   Sequence: NodeBase,
@@ -52,11 +53,11 @@ const nodeTypes = {
 const initialNodes = [
   {
     id: 'root',
-    type: 'RootNode',
+    type: 'basic',
     position: { x: 250, y: 0 },
     data: { 
       label: '根节点', 
-      nodeType: 'RootNode',
+      nodeType: 'basic',
       description: '行为树的起始节点，所有行为树必须从此节点开始'
     },
     className: 'node-root'
@@ -79,7 +80,6 @@ const NodeCanvas = forwardRef(({
   // 状态管理
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [selectedNode, setSelectedNode] = useState(null);
   const reactFlowInstance = useReactFlow();
   
   // 创建一个带有settings属性的nodeTypes对象
@@ -141,17 +141,6 @@ const NodeCanvas = forwardRef(({
       if (onSelectionChange) {
         onSelectionChange({ nodes });
       }
-      
-      // 更新内部选中节点状态
-    const selectedNode = nodes.length > 0 ? nodes[0] : null;
-      setSelectedNode(selectedNode);
-      
-      // 添加日志以便调试
-      if (nodes.length > 0) {
-        console.log(`NodeCanvas: 选中了 ${nodes.length} 个节点`);
-      } else {
-        console.log('NodeCanvas: 没有选中节点');
-    }
     },
     [onSelectionChange]
   );
@@ -165,19 +154,6 @@ const NodeCanvas = forwardRef(({
     },
     [onNodeDoubleClick]
   );
-  
-  // 缩放控制
-  const zoomIn = useCallback(() => {
-    reactFlowInstance.zoomIn();
-  }, [reactFlowInstance]);
-  
-  const zoomOut = useCallback(() => {
-    reactFlowInstance.zoomOut();
-  }, [reactFlowInstance]);
-  
-  const zoomReset = useCallback(() => {
-    reactFlowInstance.setViewport({ x: 0, y: 0, zoom: 1 });
-  }, [reactFlowInstance]);
   
   // 创建子图
   const createSubgraph = useCallback((selectedNodeIds) => {
@@ -316,11 +292,13 @@ const NodeCanvas = forwardRef(({
     
     setEdges(newEdges);
     
-    // 选中新创建的子图节点
-    setSelectedNode(subgraphNode);
+    // 通知父组件选中了新的子图节点
+    if (onSelectionChange) {
+      onSelectionChange({ nodes: [subgraphNode] });
+    }
     
     return subgraphId;
-  }, [nodes, edges, setNodes, setEdges, onOpenSubgraph]);
+  }, [nodes, edges, setNodes, setEdges, onSelectionChange, onOpenSubgraph]);
   
   // 暴露内部方法供父组件调用
   useImperativeHandle(ref, () => ({
@@ -342,10 +320,8 @@ const NodeCanvas = forwardRef(({
     // 拖拽结束
     onDragEnd,
     
-    // 缩放控制
-    zoomIn,
-    zoomOut,
-    zoomReset,
+    // 获取ReactFlow实例
+    getReactFlowInstance: () => reactFlowInstance,
     
     // 获取当前视图状态
     getViewport: () => reactFlowInstance.getViewport(),
@@ -438,7 +414,7 @@ const NodeCanvas = forwardRef(({
   }));
   
   return (
-    <div className="canvas-container" ref={reactFlowWrapper}>
+    <div className="canvas-container" ref={reactFlowWrapper} style={{ width: '100%', height: '100%' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -450,7 +426,7 @@ const NodeCanvas = forwardRef(({
         nodeTypes={nodeTypesWithSettings}
         snapToGrid={true}
         snapGrid={[15, 15]}
-        defaultviewport={{ x: 0, y: 0, zoom: 1 }}
+        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         attributionPosition="bottom-left"
         onDragOver={dragHandlers.onDragOver}
         onDrop={dropHandlers.onDrop}
@@ -458,7 +434,7 @@ const NodeCanvas = forwardRef(({
         onPaneContextMenu={(event) => onContextMenu && onContextMenu(event, null)}
         multiSelectionKeyCode="Shift"
         selectionKeyCode={null}
-        selectionondrag={true}
+        selectionOnDrag={true}
         selectNodesOnDrag={false}
         elementsSelectable={true}
         deleteKeyCode="Delete"
@@ -471,7 +447,7 @@ const NodeCanvas = forwardRef(({
         minZoom={0.1}
         maxZoom={4}
         preventScrolling={false}
-        zoomStep={0.01}
+        fitView
       >
         <Controls />
         <MiniMap 

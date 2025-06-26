@@ -1,6 +1,6 @@
 import React, { memo, useState, useRef, useEffect } from 'react';
-import { Handle, Position, useUpdateNodeInternals } from 'react-flow-renderer';
-import { getNodeColor, NodeTypes, getNodeInfo } from '../../utils/nodeTypes';
+import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
+ import { getNodeColor, getNodeInfo } from '../../utils/nodeTypes';
 
 // 带悬停效果的连接点标签组件
 const PortLabel = ({ text, position, left, visible, alwaysShow }) => {
@@ -33,21 +33,28 @@ const EnhancedHandle = ({ type, position, id, style, left, label, onHover, alway
   const handleRef = useRef(null);
   
   useEffect(() => {
-    if (handleRef.current) {
-      handleRef.current.addEventListener('mouseenter', () => {
+    // 保存引用以便在清理函数中使用
+    const currentHandleRef = handleRef.current;
+    
+    const handleMouseEnter = () => {
         setHover(true);
         if (onHover) onHover(id, true);
-      });
-      handleRef.current.addEventListener('mouseleave', () => {
+    };
+    
+    const handleMouseLeave = () => {
         setHover(false);
         if (onHover) onHover(id, false);
-      });
+    };
+    
+    if (currentHandleRef) {
+      currentHandleRef.addEventListener('mouseenter', handleMouseEnter);
+      currentHandleRef.addEventListener('mouseleave', handleMouseLeave);
     }
     
     return () => {
-      if (handleRef.current) {
-        handleRef.current.removeEventListener('mouseenter', () => {});
-        handleRef.current.removeEventListener('mouseleave', () => {});
+      if (currentHandleRef) {
+        currentHandleRef.removeEventListener('mouseenter', handleMouseEnter);
+        currentHandleRef.removeEventListener('mouseleave', handleMouseLeave);
       }
     };
   }, [id, onHover]);
@@ -84,7 +91,6 @@ const NodeBase = ({ data, selected, type, id, settings = {} }) => {
   const [editingParam, setEditingParam] = useState(null);
   const [editParamValue, setEditParamValue] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
-  const [hoveredPort, setHoveredPort] = useState(null);
   const dropdownRef = useRef(null);
   const updateNodeInternals = useUpdateNodeInternals();
   
@@ -107,7 +113,8 @@ const NodeBase = ({ data, selected, type, id, settings = {} }) => {
   };
 
   const handlePortHover = (portId, isHovered) => {
-    setHoveredPort(isHovered ? portId : null);
+    // 端口悬停处理
+    console.debug(`Port ${portId} hover: ${isHovered}`);
   };
 
   // 双击参数编辑
@@ -244,14 +251,6 @@ const NodeBase = ({ data, selected, type, id, settings = {} }) => {
       }
     }
     return true;
-  };
-  
-  // 获取节点参数的定义
-  const getParamDefinitions = () => {
-    if (nodeInfo && nodeInfo.params) {
-      return nodeInfo.params;
-    }
-    return [];
   };
   
   // 过滤显示的参数，只显示应该可见的参数

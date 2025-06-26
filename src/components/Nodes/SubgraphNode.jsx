@@ -1,5 +1,5 @@
-import React, { memo, useState, useRef, useEffect } from 'react';
-import { Handle, Position, useUpdateNodeInternals } from 'react-flow-renderer';
+import React, { memo, useEffect } from 'react';
+import { Handle, Position, useUpdateNodeInternals } from '@xyflow/react';
 import { getNodeColor } from '../../utils/nodeTypes';
 
 // 子图节点组件
@@ -75,12 +75,13 @@ const SubgraphNode = ({ data, selected, id, settings = {} }) => {
         </div>
         
         {/* 打开子图按钮 */}
-        <div 
+        <button 
           className="subgraph-open"
           onClick={openSubgraph}
           style={{ 
             marginTop: '8px',
             padding: '4px 8px',
+            border: 'none',
             borderRadius: '4px',
             background: `${nodeColor}20`,
             color: nodeColor,
@@ -88,14 +89,11 @@ const SubgraphNode = ({ data, selected, id, settings = {} }) => {
             textAlign: 'center',
             cursor: 'pointer',
             fontWeight: 500,
-            transition: 'all 0.2s ease',
-            ':hover': {
-              background: `${nodeColor}30`,
-            }
+            width: '100%'
           }}
         >
           打开子图
-        </div>
+        </button>
       </div>
       
       {/* 连接点 */}

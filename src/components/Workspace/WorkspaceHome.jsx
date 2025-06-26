@@ -4,6 +4,7 @@ import FileExplorer from './FileExplorer';
 import FilePreview from './FilePreview';
 import RecentProjects from './RecentProjects';
 import SplitPanel from './SplitPanel';
+import TitleBar from '../Toolbar/TitleBar';
 
 const WorkspaceHome = () => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -221,23 +222,45 @@ const WorkspaceHome = () => {
   const isCurrentDirectoryFavorited = currentDirectory && 
     favorites.some(fav => fav.path === currentDirectory);
   
+  // 新建行为树功能
+  const handleNewBehaviorTree = async () => {
+    if (window.electron && window.electron.ipcRenderer) {
+      try {
+        // 清除当前加载的文件信息
+        await window.electron.ipcRenderer.invoke('store-current-file', {
+          path: null,
+          content: null
+        });
+        console.log('已清除当前文件信息，准备创建新行为树');
+      } catch (error) {
+        console.error('清除当前文件信息失败:', error);
+      }
+    }
+    // 导航到编辑器页面
+    navigate('/editor');
+  };
+  
   return (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100vh',
-      background: '#f0f2f5',
-      overflow: 'hidden'
+      background: '#f7f9fc',
+      overflow: 'hidden',
+      border: 'none'
     }}>
-      {/* 顶部标题栏 */}
+      {/* 自定义标题栏 */}
+      <TitleBar title="行为树编辑器 - 工作区" />
+      
+      {/* 顶部工具栏 */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: '0 24px',
-        height: '56px',
+        height: '48px',
         background: '#fff',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <h1 style={{ 
@@ -334,7 +357,7 @@ const WorkspaceHome = () => {
           )}
           
           <button 
-            onClick={() => navigate('/editor')}
+            onClick={handleNewBehaviorTree}
             style={{
               height: '34px',
               padding: '0 16px',
@@ -383,8 +406,8 @@ const WorkspaceHome = () => {
           {/* 收藏夹卡片 */}
           <div style={{
             background: '#fff',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            borderRadius: '10px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
@@ -513,8 +536,8 @@ const WorkspaceHome = () => {
           {/* 最近项目卡片 */}
           <div style={{
             background: '#fff',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            borderRadius: '10px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
@@ -562,8 +585,8 @@ const WorkspaceHome = () => {
           display: 'flex',
           flexDirection: 'column',
           background: '#fff',
-          borderRadius: '8px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          borderRadius: '10px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
           overflow: 'hidden'
         }}>
           {/* 文件浏览器头部 */}

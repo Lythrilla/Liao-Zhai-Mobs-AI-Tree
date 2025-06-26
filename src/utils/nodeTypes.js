@@ -1,7 +1,7 @@
 // 节点类型枚举
 export const NodeTypes = {
   // 元节点
-  ROOT: 'RootNode',
+  ROOT: 'basic',
   SUBGRAPH: 'SubgraphNode',
   
   // 组合节点
@@ -48,7 +48,8 @@ export const NodeCategories = {
   DECORATOR: 'decorator',
   LEAF: 'leaf',
   SERVICE: 'service',
-  SUBGRAPH: 'subgraph'
+  SUBGRAPH: 'subgraph',
+  ROOT: 'root'
 };
 
 // 节点元数据定义
@@ -56,7 +57,7 @@ export const NodeData = {
   // 元节点
   [NodeTypes.ROOT]: {
     name: '根节点',
-    category: NodeCategories.META,
+    category: NodeCategories.ROOT,
     description: '行为树的入口点',
     inputs: [],
     outputs: ['起始'],
@@ -858,7 +859,7 @@ export const NodeData = {
 export const NodeGroups = [
   {
     title: '元节点',
-    nodes: [NodeTypes.ROOT]
+    nodes: ['basic']
   },
   {
     title: '组合节点',

@@ -2,6 +2,10 @@ const { app, BrowserWindow, ipcMain, dialog, shell, Menu, protocol, session } = 
 const path = require('path');
 const fs = require('fs');
 const isDev = require('electron-is-dev');
+const remote = require('@electron/remote/main');
+
+// 初始化@electron/remote
+remote.initialize();
 
 let mainWindow;
 
@@ -70,12 +74,14 @@ function createWindow() {
   console.log('用户数据路径:', app.getPath('userData'));
   console.log('是否为开发环境:', isDev);
   
-  // 创建浏览器窗口
+  // 创建浏览器窗口 - 无边框样式
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 960,
     minHeight: 600,
+    frame: false, // 无边框模式
+    titleBarStyle: 'hidden', // 隐藏标题栏
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -150,6 +156,9 @@ function createWindow() {
     mainWindow.webContents.setZoomFactor(0.75);
     mainWindow.show();
   });
+  
+  // 启用remote模块
+  remote.enable(mainWindow.webContents);
 
   // 窗口关闭时的操作
   mainWindow.on('closed', () => {
@@ -395,9 +404,8 @@ function normalizePath(filePath) {
   return normalizedPath;
 }
 
-// 读取目录内容
+// 读取目录内容 - 修复版本
 ipcMain.handle('read-directory', async (event, dirPath) => {
-  console.log('读取目录请求:', dirPath);
   try {
     // 确保路径格式正确
     let normalizedPath = dirPath;
@@ -405,12 +413,14 @@ ipcMain.handle('read-directory', async (event, dirPath) => {
       normalizedPath = decodeURI(dirPath.substr(8)); // 去掉 'file:///' 前缀
     }
     
-    console.log('规范化后的目录路径:', normalizedPath);
+    // 确保目录存在
+    const stats = await fs.promises.stat(normalizedPath);
+    if (!stats.isDirectory()) {
+      return { success: false, error: '指定的路径不是目录' };
+    }
     
     const entries = await fs.promises.readdir(normalizedPath, { withFileTypes: true });
     const result = [];
-    
-    console.log(`发现 ${entries.length} 个项目在目录 ${normalizedPath}`);
     
     for (const entry of entries) {
       const entryPath = path.join(normalizedPath, entry.name);
@@ -431,10 +441,8 @@ ipcMain.handle('read-directory', async (event, dirPath) => {
       return a.name.localeCompare(b.name);
     });
     
-    console.log(`成功读取目录 ${normalizedPath}，返回 ${result.length} 个项目`);
     return { success: true, entries: result };
   } catch (error) {
-    console.log('读取目录失败:', error);
     return { success: false, error: error.message };
   }
 });
@@ -644,9 +652,7 @@ ipcMain.handle('get-system-drives', async () => {
 // 获取当前已加载的文件
 ipcMain.handle('get-current-file', async () => {
   try {
-    // 返回全局保存的当前打开文件
     if (global.currentOpenFile) {
-      console.log('返回当前已加载的文件:', global.currentOpenFile.path);
       return { 
         success: true, 
         data: global.currentOpenFile.content,
@@ -663,13 +669,18 @@ ipcMain.handle('get-current-file', async () => {
 // 存储当前文件数据
 ipcMain.handle('store-current-file', async (event, fileData) => {
   try {
-    if (!fileData || !fileData.path || !fileData.content) {
+    if (!fileData || (fileData.path === null && fileData.content === null)) {
+      console.log('清除当前文件数据');
+      global.currentOpenFile = null;
+      return { success: true };
+    }
+    
+    if (!fileData.path || !fileData.content) {
       return { success: false, error: '无效的文件数据' };
     }
     
     console.log('存储当前文件数据到全局变量:', fileData.path);
     
-    // 存储到全局变量
     global.currentOpenFile = {
       path: fileData.path,
       content: fileData.content
@@ -823,4 +834,62 @@ ipcMain.handle('add-recent-project', async (event, project) => {
     console.error('添加最近项目失败:', error);
     return { success: false, error: error.message };
   }
+});
+
+// 窗口控制 - 同步消息处理
+ipcMain.on('window-minimize-sync', (event) => {
+  if (mainWindow) mainWindow.minimize();
+});
+
+ipcMain.on('window-maximize-sync', (event) => {
+  if (mainWindow) {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  }
+});
+
+ipcMain.on('window-close-sync', (event) => {
+  if (mainWindow) mainWindow.close();
+});
+
+// 窗口控制
+ipcMain.handle('window-minimize', () => {
+  if (mainWindow) {
+    mainWindow.minimize();
+  }
+  return { success: true };
+});
+
+ipcMain.handle('window-maximize', () => {
+  if (mainWindow) {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+    return { success: true, isMaximized: mainWindow.isMaximized() };
+  } else {
+    return { success: false, error: 'mainWindow不存在' };
+  }
+});
+
+ipcMain.handle('window-unmaximize', () => {
+  if (mainWindow && mainWindow.isMaximized()) {
+    mainWindow.unmaximize();
+  }
+  return { success: true };
+});
+
+ipcMain.handle('window-close', () => {
+  if (mainWindow) {
+    mainWindow.close();
+  }
+  return { success: true };
+});
+
+ipcMain.handle('window-is-maximized', () => {
+  return mainWindow ? mainWindow.isMaximized() : false;
 }); 

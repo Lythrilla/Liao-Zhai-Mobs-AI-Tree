@@ -60,7 +60,7 @@ export const useDragAndDrop = (reactFlowInstance, nodes, setNodes) => {
       // 获取画布容器的边界
       const reactFlowBounds = event.currentTarget.getBoundingClientRect();
       
-      const position = reactFlowInstance.project({
+      const position = reactFlowInstance.screenToFlowPosition({
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       });

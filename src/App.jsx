@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { ReactFlowProvider } from 'react-flow-renderer';
+import { ReactFlowProvider } from '@xyflow/react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import NodeCanvas from './components/Canvas/NodeCanvas';
 import Toolbar from './components/Toolbar/Toolbar';
+import TitleBar from './components/Toolbar/TitleBar';
 import NodePalette from './components/Sidebar/NodePalette';
 import PropertyPanel from './components/Sidebar/PropertyPanel';
 import { SettingsButton, SettingsPanel } from './components/Modal/SettingsPanel';
@@ -24,10 +25,10 @@ const EditorApp = () => {
   const [selectedNodes, setSelectedNodes] = useState([]);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [fileLoadAttempted, setFileLoadAttempted] = useState(false);
 
   // 设置状态
   const [settings, setSettings] = useState(() => {
-    // 从localStorage加载设置，如果没有则使用默认设置
     const savedSettings = localStorage.getItem('btEditorSettings');
     return savedSettings ? JSON.parse(savedSettings) : defaultSettings;
   });
@@ -37,22 +38,15 @@ const EditorApp = () => {
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   
-  // 引用NodeCanvas实例
   const canvasRef = useRef(null);
-  
-  // 剪贴板状态
   const [clipboard, setClipboard] = useState(null);
-  
-  // 右键菜单状态
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
   
-  // 子图相关状态
   const [subgraphs, setSubgraphs] = useState({});
   const [currentSubgraph, setCurrentSubgraph] = useState(null);
   const [subgraphHistory, setSubgraphHistory] = useState([]);
   const [showSubgraphList, setShowSubgraphList] = useState(false);
   
-  // 拖动子图列表状态
   const [isDragging, setIsDragging] = useState(false);
   const subgraphPanelRef = useRef(null);
   
@@ -65,7 +59,6 @@ const EditorApp = () => {
       const initialEdges = canvasRef.current.getEdges();
       
       if (initialNodes.length > 0) {
-        // 初始化历史记录
         const initialState = { nodes: initialNodes, edges: initialEdges };
         setHistory([initialState]);
         setHistoryIndex(0);
@@ -77,20 +70,78 @@ const EditorApp = () => {
     }
   }, [canvasRef]);
 
+  // 新建行为树
+  const handleNew = useCallback(() => {
+    if (canvasRef.current) {
+      if (history.length > 1) {
+        if (!window.confirm('是否创建新的行为树？当前未保存的更改将丢失。')) {
+          return;
+        }
+      }
+      
+      const initialNodes = [
+        {
+          id: 'root',
+          type: 'basic',
+          position: { x: 250, y: 0 },
+          data: { 
+            label: '根节点', 
+            nodeType: 'basic',
+            description: '行为树的起始节点，所有行为树必须从此节点开始'
+          },
+          className: 'node-root'
+        }
+      ];
+      const initialEdges = [];
+      
+      canvasRef.current.setNodes(initialNodes);
+      canvasRef.current.setEdges(initialEdges);
+      
+      setSelectedNode(null);
+      
+      setTimeout(() => {
+        const newHistoryState = { nodes: initialNodes, edges: initialEdges };
+        setHistory([newHistoryState]);
+        setHistoryIndex(0);
+        setCanUndo(false);
+        setCanRedo(false);
+      }, 0);
+      
+      if (window.electron && window.electron.ipcRenderer) {
+        try {
+          window.electron.ipcRenderer.invoke('store-current-file', {
+            path: null,
+            content: null
+          }).then(() => {
+            console.log('已清除当前文件信息');
+          }).catch(error => {
+            console.error('清除当前文件信息失败:', error);
+          });
+        } catch (error) {
+          console.error('尝试清除当前文件信息时出错:', error);
+        }
+      }
+    }
+  }, [history, canvasRef]);
+
   // 初始化历史记录
   useEffect(() => {
-    // 组件挂载后延迟初始化，确保canvasRef已经设置
     const timer = setTimeout(initializeHistory, 100);
     return () => clearTimeout(timer);
   }, [initializeHistory]);
 
   // 检查是否有通过IPC加载的文件
   useEffect(() => {
+    if (fileLoadAttempted) {
+      return;
+    }
+
     const checkLoadedFile = async () => {
+      setFileLoadAttempted(true);
+      
       if (window.electron && window.electron.ipcRenderer) {
         try {
           console.log('检查是否有已加载的文件...');
-          // 获取当前已加载的文件数据
           const result = await window.electron.ipcRenderer.invoke('get-current-file');
           console.log('获取到文件结果:', result);
           
@@ -99,31 +150,32 @@ const EditorApp = () => {
             console.log('文件数据类型:', typeof result.data);
             console.log('文件数据包含节点数量:', result.data.nodes ? result.data.nodes.length : 0);
             
-            // 如果有数据，则加载到编辑器中
             if (canvasRef.current && result.data) {
               console.log('开始加载文件到编辑器...');
               const loadResult = canvasRef.current.loadFromJson(result.data);
               console.log('加载文件结果:', loadResult);
               
               if (loadResult) {
-                // 初始化历史记录
                 console.log('初始化历史记录...');
                 initializeHistory();
               }
             }
           } else {
-            console.log('没有已加载的文件或加载失败');
+            console.log('没有已加载的文件或加载失败，创建新的行为树');
+            handleNew();
           }
         } catch (error) {
-          // 如果get-current-file处理程序不存在，不会报错
           console.log('尝试获取已加载文件出错:', error.message);
+          handleNew();
         }
+      } else {
+        console.log('没有Electron环境，创建新的行为树');
+        handleNew();
       }
     };
     
-    // 组件挂载后检查
     checkLoadedFile();
-  }, [initializeHistory]);
+  }, [fileLoadAttempted, initializeHistory, handleNew]);
   
   // 处理设置变更
   const handleSettingChange = useCallback((key, value) => {
@@ -135,22 +187,10 @@ const EditorApp = () => {
   
   // 处理节点选择
   const handleNodeSelected = useCallback((node) => {
-    // 如果选择了节点，更新当前选中节点
     if (node) {
     setSelectedNode(node);
-      
-      // 更新选中节点列表
-      setSelectedNodes(prev => {
-        // 检查节点是否已经在列表中
-        const exists = prev.some(n => n.id === node.id);
-        if (exists) {
-          return prev;
+      setSelectedNodes([node]); // 使用单选模式
         } else {
-          return [node]; // 使用单选模式，仅保留当前选中节点
-        }
-      });
-    } else {
-      // 如果没有选中节点，清空列表
       setSelectedNode(null);
       setSelectedNodes([]);
     }
@@ -364,50 +404,6 @@ const EditorApp = () => {
     }
   }, []);
 
-  // 新建行为树
-  const handleNew = useCallback(() => {
-    if (canvasRef.current) {
-      // 确认是否清除当前工作
-      if (history.length > 1) {
-        if (!window.confirm('是否创建新的行为树？当前未保存的更改将丢失。')) {
-          return;
-        }
-      }
-      
-      // 重置为初始状态
-      const initialNodes = [
-        {
-          id: 'root',
-          type: 'RootNode',
-          position: { x: 250, y: 0 },
-          data: { 
-            label: '根节点', 
-            nodeType: 'RootNode',
-            description: '行为树的起始节点，所有行为树必须从此节点开始'
-          },
-          className: 'node-root'
-        }
-      ];
-      const initialEdges = [];
-      
-      // 更新画布
-      canvasRef.current.setNodes(initialNodes);
-      canvasRef.current.setEdges(initialEdges);
-      
-      // 清除选中状态
-      setSelectedNode(null);
-      
-      // 重置历史记录 - 使用setTimeout确保节点更新后再重置历史
-      setTimeout(() => {
-        const newHistoryState = { nodes: initialNodes, edges: initialEdges };
-        setHistory([newHistoryState]);
-        setHistoryIndex(0);
-        setCanUndo(false);
-        setCanRedo(false);
-      }, 0);
-    }
-  }, [history, canvasRef]);
-
   const handleLoad = useCallback(() => {
     // 创建文件输入元素
     const input = document.createElement('input');
@@ -482,11 +478,11 @@ const EditorApp = () => {
       const edges = canvasRef.current.getEdges();
       
       // 检查是否是根节点
-      const isRootNode = selectedNode.id === 'root' || selectedNode.type === 'RootNode';
+      const isRootNode = selectedNode.id === 'root' || selectedNode.type === 'basic';
       
       // 计算根节点的数量
       const rootNodeCount = nodes.filter(node => 
-        node.id === 'root' || node.type === 'RootNode'
+        node.id === 'root' || node.type === 'basic'
       ).length;
       
       // 如果是最后一个根节点，不允许删除
@@ -808,20 +804,32 @@ const EditorApp = () => {
 
   // 缩放控制
   const handleZoomIn = useCallback(() => {
-    if (canvasRef.current && canvasRef.current.zoomIn) {
-      canvasRef.current.zoomIn();
+    // 使用ReactFlow内置的缩放控制
+    if (canvasRef.current) {
+      const instance = canvasRef.current.getReactFlowInstance?.();
+      if (instance) {
+        instance.zoomIn();
+      }
     }
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    if (canvasRef.current && canvasRef.current.zoomOut) {
-      canvasRef.current.zoomOut();
+    // 使用ReactFlow内置的缩放控制
+    if (canvasRef.current) {
+      const instance = canvasRef.current.getReactFlowInstance?.();
+      if (instance) {
+        instance.zoomOut();
+      }
     }
   }, []);
 
   const handleZoomReset = useCallback(() => {
-    if (canvasRef.current && canvasRef.current.zoomReset) {
-      canvasRef.current.zoomReset();
+    // 使用ReactFlow内置的缩放控制
+    if (canvasRef.current) {
+      const instance = canvasRef.current.getReactFlowInstance?.();
+      if (instance) {
+        instance.setViewport({ x: 0, y: 0, zoom: 1 });
+      }
     }
   }, []);
 
@@ -1254,9 +1262,28 @@ const EditorApp = () => {
   }, [navigate]);
 
   return (
-    <div className="app-container">
+    <div className="app-container" style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100vh',
+      overflow: 'hidden',
+      border: 'none'
+    }}>
+      {/* 自定义标题栏 */}
+      <TitleBar title={`行为树编辑器 ${currentSubgraph ? ` - ${subgraphs[currentSubgraph]?.name || '子图'}` : ''}`} />
+      
+      {/* 主要内容区域 */}
+      <div style={{
+        display: 'flex',
+        flex: 1,
+        overflow: 'hidden'
+      }}>
       {/* 侧边栏 */}
-      <div className="sidebar">
+        <div className="sidebar" style={{
+          width: '240px',
+          borderRight: '1px solid var(--border-color)',
+          backgroundColor: 'var(--bg-primary)'
+        }}>
         <div style={{ 
           display: 'flex', 
           flexDirection: 'column', 
@@ -1275,7 +1302,12 @@ const EditorApp = () => {
       </div>
       
       {/* 主内容区 */}
-      <div className="main-content">
+        <div className="main-content" style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}>
         {/* 工具栏 */}
         <Toolbar buttons={toolbarButtons} />
         
@@ -1315,7 +1347,13 @@ const EditorApp = () => {
         
         {/* 当前位置指示 */}
         {currentSubgraph && (
-          <div className="breadcrumb">
+            <div className="breadcrumb" style={{
+              padding: '4px 8px',
+              borderBottom: '1px solid var(--border-color)',
+              backgroundColor: 'var(--bg-secondary)',
+              display: 'flex',
+              alignItems: 'center'
+            }}>
             <span 
               onClick={handleReturnFromSubgraph} 
               style={{ 
@@ -1325,16 +1363,23 @@ const EditorApp = () => {
                 fontSize: '14px'
               }}
             >
-              <i className="icon icon-home" style={{ marginRight: '5px' }}></i>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                  <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                </svg>
               主画布
-              <i className="icon icon-right" style={{ margin: '0 5px' }}></i>
-              <i className="icon icon-folder" style={{ marginRight: '5px' }}></i>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ margin: '0 6px' }}>
+                  <path d="M9 6l6 6-6 6"/>
+                </svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '4px' }}>
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
               {subgraphs[currentSubgraph]?.name || '子图'}
             </span>
           </div>
         )}
         
         {/* 节点画布 */}
+          <div style={{ flex: 1, overflow: 'hidden' }}>
         <ReactFlowProvider>
           <NodeCanvas 
             ref={canvasRef}
@@ -1342,6 +1387,7 @@ const EditorApp = () => {
             settings={settings}
           />
         </ReactFlowProvider>
+          </div>
       </div>
       
       {/* 右侧属性面板 */}
@@ -1350,7 +1396,6 @@ const EditorApp = () => {
         borderLeft: '1px solid var(--border-color)',
         overflow: 'auto',
         height: '100%',
-        transition: 'all 0.3s ease',
         backgroundColor: 'var(--bg-primary)'
       }}>
         <PropertyPanel 
@@ -1358,6 +1403,7 @@ const EditorApp = () => {
           updateNodeParams={updateNodeParams} 
           collapsed={false} 
         />
+        </div>
       </div>
       
       {/* 子图列表 */}

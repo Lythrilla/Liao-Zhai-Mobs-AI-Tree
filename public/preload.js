@@ -25,7 +25,12 @@ const validInvokeChannels = [
   'get-app-state',
   'validate-behavior-tree',
   'store-current-file',
-  'get-current-file'
+  'get-current-file',
+  'window-minimize',
+  'window-maximize',
+  'window-unmaximize',
+  'window-close',
+  'window-is-maximized'
 ];
 
 const validReceiveChannels = [
@@ -41,7 +46,6 @@ contextBridge.exposeInMainWorld('electron', {
     // 发送请求到主进程并等待响应
     invoke: (channel, ...args) => {
       if (validInvokeChannels.includes(channel)) {
-        console.log(`IPC调用: ${channel}`);
         return ipcRenderer.invoke(channel, ...args);
       }
       return Promise.reject(new Error(`禁止访问IPC通道: ${channel}`));
@@ -55,6 +59,22 @@ contextBridge.exposeInMainWorld('electron', {
         return () => ipcRenderer.removeListener(channel, wrappedListener);
       }
       return null;
+    }
+  },
+  
+  // 窗口控制API - 简单直接的实现
+  windowControls: {
+    minimize: () => {
+      ipcRenderer.send('window-minimize-sync');
+    },
+    maximize: () => {
+      ipcRenderer.send('window-maximize-sync');
+    },
+    close: () => {
+      ipcRenderer.send('window-close-sync');
+    },
+    isMaximized: () => {
+      return ipcRenderer.invoke('window-is-maximized');
     }
   }
 }); 
